@@ -6,3 +6,7 @@ venv/
 *.mp3
 viz_*/
 *.png
+
+.DS_Store
+prev/
+recordings/

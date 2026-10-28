@@ -160,9 +160,9 @@ def _fur_elise_without_harmony() -> ScoreModel:
 
 def _c_major_scale_model() -> ScoreModel:
     # C4, D4, E4, F4, G4, A4, B4, C5
-    pitches = [60, 62, 64, 65, 67, 69, 71, 72, 72, 71, 69, 67, 65, 64, 62, 60]
+    pitches = [60, 62, 64, 65, 67, 69, 71, 72]
     # Quarter notes: 1 beat per note, final C5 held for 2 beats
-    durations = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    durations = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     total_beats = sum(durations)
 
     return ScoreModel(
