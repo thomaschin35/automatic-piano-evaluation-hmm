@@ -1,0 +1,29 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "ode_melody"
+perfect = false
+
+[[error]]
+note = "RH5"
+type = "wrong_pitch"
+played = "A4"
+
+[[error]]
+note = "RH6"
+type = "wrong_pitch"
+played = "G4"
+
+[[error]]
+note = "RH7"
+type = "wrong_pitch"
+played = "F4"
+comment = "slipped onto another nearby note"
+
+[[error]]
+note = "RH8"
+type = "wrong_pitch"
+played = "E4"
+
+[[error]]
+note = "RH9"
+type = "late"

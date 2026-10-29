@@ -10,3 +10,6 @@ viz_*/
 .DS_Store
 prev/
 recordings/
+# eval harness outputs and phone audio
+eval/runs/
+*.m4a

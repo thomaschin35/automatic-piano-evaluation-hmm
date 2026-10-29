@@ -47,6 +47,9 @@ class HMMConfig:
     minimum_presence_fraction: float = 0.30
     position_variance: float = 0.02
     backtrack_jump_epsilon: float = 0.002
+    # substitute naming: a replacement pitch must be struck within the first part of the segment
+    sub_onset_threshold: float = 0.5
+    sub_attack_fraction: float = 0.4
 
 
 @dataclass
@@ -81,17 +84,36 @@ class SegmentResult:
     expected_start_frame: int
     expected_end_frame: int
     detected_pitches: tuple[int, ...]
-    observed_pitches: tuple[int, ...]
     has_ghost_wrong: bool
+    # (expected pitch, played pitch) for each missing pitch that was replaced by another strike
+    substitutes: tuple[tuple[int, int], ...] = ()
 
     @property
     def all_notes_present(self) -> bool:
         return set(self.expected_pitches).issubset(self.detected_pitches)
 
     @property
+    def missing_pitches(self) -> tuple[int, ...]:
+        return tuple(p for p in self.expected_pitches if p not in self.detected_pitches)
+
+    @property
+    def skipped_pitches(self) -> tuple[int, ...]:
+        replaced = {p for p, _ in self.substitutes}
+        return tuple(p for p in self.missing_pitches if p not in replaced)
+
+    @property
+    def observed_pitches(self) -> tuple[int, ...]:
+        return tuple(sorted(set(self.detected_pitches) | {q for _, q in self.substitutes}))
+
+    @property
+    def status(self) -> str:
+        if self.all_notes_present:
+            return "correct"
+        return "substitution" if self.substitutes else "skipped"
+
+    @property
     def is_substitution(self) -> bool:
-        # A true substitution requires that the expected notes were NOT found
-        return not self.all_notes_present and (bool(self.observed_pitches) or self.has_ghost_wrong)
+        return self.status == "substitution"
 
 
 # ---------------------------------------------------------------------------
@@ -327,6 +349,91 @@ def smooth_segment_timeline(
 # ---------------------------------------------------------------------------
 # Post-Processing & Grading
 # ---------------------------------------------------------------------------
+OVERTONE_OFFSETS = (12, 19, 24, 28, 31, 36)
+
+
+def name_substitutes(
+    bundle: stft_features.Stage1FeatureBundle,
+    start_f: int,
+    end_f: int,
+    body: slice,
+    segment: ScoreSegment,
+    detected: tuple[int, ...],
+    previous_substitutes: tuple[tuple[int, int], ...],
+    onset_threshold: float,
+    attack_fraction: float,
+    presence_threshold: float,
+) -> tuple[tuple[int, int], ...]:
+    """
+    Pair each missing expected pitch with the pitch the player struck instead, or leave it
+    unpaired (skipped). A substitute must be freshly struck near the segment start, so the
+    previous note still ringing never counts; the exception is a held score note continuing
+    from the previous segment, which keeps that segment's substitute while it still sounds.
+    Partials of chosen/detected pitches and sub-octave ghosts beneath them are excluded.
+    """
+    missing = [p for p in segment.expected_pitches if p not in detected]
+    if not missing:
+        return ()
+
+    def presence(q: int) -> float:
+        sc = bundle.candidate_scores[q][body]
+        return float(np.median(sc)) if sc.size else 0.0
+
+    pairs: dict[int, int] = {}
+    prev_map = dict(previous_substitutes)
+    for p in missing:
+        q = prev_map.get(p)
+        if p not in segment.onset_pitches and q is not None and presence(q) >= presence_threshold:
+            pairs[p] = q
+
+    remaining = [p for p in missing if p not in pairs]
+    if remaining:
+        n_frames = bundle.audio.num_frames
+        d = end_f - start_f + 1
+        w0 = max(0, start_f - 2)
+        w1 = min(n_frames, start_f + max(4, int(round(attack_fraction * d))) + 1)
+        played = set(detected) | set(pairs.values())
+        candidates = []
+        for q in sorted(bundle.candidate_scores):
+            if q in segment.expected_pitches:
+                continue
+            onset_peak = float(np.max(bundle.candidate_onset_scores[q][w0:w1]))
+            pres_q = presence(q)
+            if onset_peak < onset_threshold or pres_q < presence_threshold:
+                continue
+            candidates.append((q, onset_peak, pres_q))
+
+        # Low -> high so a chosen low note explains its own partials higher up
+        kept: list[tuple[int, float, float]] = []
+        for q, onset_peak, pres_q in candidates:
+            lower = played | {k for k, _, _ in kept}
+            if any(q - off in lower for off in OVERTONE_OFFSETS):
+                continue
+            kept.append((q, onset_peak, pres_q))
+        # Drop sub-octave ghosts: q sits under a played/kept note that is present more strongly
+        upper = played | {k for k, _, _ in kept}
+
+        def is_ghost_below(q: int, pres_q: float) -> bool:
+            return any(
+                q + off in upper and q + off in bundle.candidate_scores and presence(q + off) > pres_q
+                for off in OVERTONE_OFFSETS
+            )
+
+        kept = [c for c in kept if not is_ghost_below(c[0], c[2])]
+
+        used: set[int] = set(pairs.values())
+        for p in remaining:
+            ranked = sorted(
+                ((o * pr / (1.0 + abs(q - p) / 12.0), q) for q, o, pr in kept if q not in used),
+                reverse=True,
+            )
+            if ranked:
+                pairs[p] = ranked[0][1]
+                used.add(ranked[0][1])
+
+    return tuple((p, pairs[p]) for p in missing if p in pairs)
+
+
 def grade_performance(
     state_path: np.ndarray,
     states: list[HMMState],
@@ -355,16 +462,13 @@ def grade_performance(
                 if np.mean(scores >= config.pitch_presence_threshold) >= config.minimum_presence_fraction:
                     detected.append(p)
 
-        observed = tuple(detected)
-        if not set(aligned.expected_pitches).issubset(detected):
-            cand_strengths = {
-                p: float(np.percentile(sc[seg_slice], 60.0))
-                for p, sc in bundle.candidate_scores.items()
-            } if len(seg_slice) > 0 else {}
-            
-            observed = tuple(sorted(
-                sorted(cand_strengths, key=cand_strengths.get, reverse=True)[:max(1, len(aligned.expected_pitches))]
-            ))
+        substitutes = name_substitutes(
+            bundle, start_f, end_f, slice(start_f, end_f + 1), aligned.score_segment,
+            tuple(detected), results[-1].substitutes if results else (),
+            onset_threshold=config.sub_onset_threshold,
+            attack_fraction=config.sub_attack_fraction,
+            presence_threshold=config.pitch_presence_threshold,
+        )
 
         results.append(SegmentResult(
             segment_index=seg_idx,
@@ -374,8 +478,8 @@ def grade_performance(
             expected_start_frame=aligned.start_frame,
             expected_end_frame=aligned.end_frame,
             detected_pitches=tuple(detected),
-            observed_pitches=observed,
             has_ghost_wrong=has_wrong,
+            substitutes=substitutes,
         ))
 
     return results
@@ -387,10 +491,13 @@ def print_diagnostic_report(results: list[SegmentResult], seconds_per_frame: flo
     print("=" * 78)
     for r in results:
         status = "CORRECT"
-        if r.is_substitution:
-            status = "WRONG NOTE (SUBSTITUTION)"
-        elif not r.all_notes_present:
-            status = "MISSED NOTE"
+        if r.substitutes:
+            played = ", ".join(f"played {midi_to_note_name(q)} for {midi_to_note_name(p)}"
+                               for p, q in r.substitutes)
+            status = f"WRONG NOTE ({played})"
+        if r.skipped_pitches:
+            skipped = f"SKIPPED ({', '.join(midi_to_note_name(p) for p in r.skipped_pitches)})"
+            status = skipped if status == "CORRECT" else f"{status} + {skipped}"
 
         exp_names = [midi_to_note_name(p) for p in r.expected_pitches]
         obs_names = [midi_to_note_name(p) for p in r.observed_pitches]
@@ -436,10 +543,10 @@ def save_alignment_plot(
         s_sec = r.start_frame * seconds_per_frame
         w_sec = (r.end_frame - r.start_frame + 1) * seconds_per_frame
 
-        if r.is_substitution:
+        if r.status == "substitution":
             bar_color = wrong_color
             border_color = "#975a16"
-        elif not r.all_notes_present:
+        elif r.status == "skipped":
             bar_color = missing_color
             border_color = "#9b2c2c"
         else:
@@ -465,7 +572,7 @@ def save_alignment_plot(
             Patch(facecolor=expected_color, edgecolor="#4a5568", label="Initial score-scaled boundaries"),
             Patch(facecolor=inferred_color, edgecolor="#22543d", label="Current inferred boundaries"),
             Patch(facecolor=wrong_color, edgecolor="#975a16", label="Possible wrong note"),
-            Patch(facecolor=missing_color, edgecolor="#9b2c2c", label="Missing / uncertain note"),
+            Patch(facecolor=missing_color, edgecolor="#9b2c2c", label="Skipped note"),
         ],
         loc="upper right",
         fontsize=8,

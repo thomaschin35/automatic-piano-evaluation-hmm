@@ -95,8 +95,23 @@ class FingerprintConfig:
     onset_softness_db: float = 2.0
     onset_min_contrast_db: float = 4.0
 
-    # Full piano candidate pitch bank (C1 = 24 to C7 = 96)
-    candidate_min_midi: int = 48
+    # Bottom-up overtone subtraction: each active lower note predicts its partial levels from its
+    # own h1 plus a per-recording partial/h1 ratio over its active frames. A low percentile keeps
+    # frames where the upper note is also played (C3+C4, G3+G4) from inflating the ratio; any
+    # positive margin erased octaves played at bass loudness. Only energy above the prediction
+    # counts toward the upper note.
+    partial_prediction_margin_db: float = 0.0
+    partial_ratio_percentile: float = 25.0
+    partial_ratio_min_frames: int = 10
+    default_partial_slope_db_per_octave: float = -6.0
+    # Struck C3/G3 measure h2 at -10..-1 dB re h1 (C4 slightly above 0); a "source" whose partials
+    # beat its own fundamental by more is a sub-octave ghost (D3 under a played D4 measured +23 dB)
+    partial_ratio_max_db: float = 3.0
+    source_min_h1_evidence: float = 0.5
+
+    # Candidate pitch bank (E1 = 28 to C7 = 96). Below E3 a semitone is < 1 bin at h1, so bass
+    # pitches rely on the h2*h3 anchor rescue (bass_anchor_cutoff_midi) to be told apart.
+    candidate_min_midi: int = 28
     candidate_max_midi: int = 96
 
 
@@ -431,6 +446,42 @@ def _extract_harmonic_db_and_contrast(
     return harmonic_db, contrast_db
 
 
+def _partial_ratio_profile(
+    h_db: np.ndarray,
+    active: np.ndarray,
+    fingerprint_config: FingerprintConfig,
+    max_partial: int,
+) -> np.ndarray:
+    """
+    Level of partial m relative to h1 (dB) for one source note, indexed by partial number
+    (index 0 unused, ratio[1] == 0). Measured partials use a robust percentile over the frames
+    where the note is active, so the recording's own mic/room tilt is calibrated out; partials
+    beyond the fingerprint are extrapolated with a non-increasing log2(m) fit.
+    """
+    n_h = h_db.shape[0]
+    m_all = np.arange(max_partial + 1, dtype=np.float64)
+    default = fingerprint_config.default_partial_slope_db_per_octave * np.log2(np.maximum(m_all, 1.0))
+    ratio = default.copy()
+    if n_h < 2 or int(np.sum(active)) < fingerprint_config.partial_ratio_min_frames:
+        return ratio
+
+    for m in range(2, n_h + 1):
+        ratio[m] = min(fingerprint_config.partial_ratio_max_db, float(np.percentile(
+            h_db[m - 1, active] - h_db[0, active],
+            fingerprint_config.partial_ratio_percentile,
+        )))
+
+    measured_m = np.arange(2, n_h + 1, dtype=np.float64)
+    if len(measured_m) >= 2:
+        slope, intercept = np.polyfit(np.log2(measured_m), ratio[2:n_h + 1], 1)
+        slope = min(float(slope), 0.0)
+        tail = intercept + slope * np.log2(m_all[n_h + 1:])
+        ratio[n_h + 1:] = np.minimum(tail, ratio[n_h])
+    else:
+        ratio[n_h + 1:] = ratio[n_h] + default[n_h + 1:] - default[n_h]
+    return ratio
+
+
 def calculate_all_candidate_features(
     audio: AudioData,
     stft_config: STFTConfig,
@@ -439,11 +490,13 @@ def calculate_all_candidate_features(
 ) -> tuple[dict[int, np.ndarray], dict[int, np.ndarray]]:
     """
     Compute STFT presence and pre-sigmoid onset scores across all candidate pitches
-    using Bottom-Up Overtone Suppression:
+    using Bottom-Up Overtone Subtraction:
       - Evaluates pitches from lowest to highest.
-      - Whenever a lower pitch `p` is active, propagates an overtone contrast mask to its
-        upper harmonic intervals (+12, +19, +24, +28, +31, +36 semitones) so overtones of
-        bass/lower notes do not hallucinate unplayed upper notes.
+      - Whenever a lower pitch `p` is active, predicts the power of its partials at the
+        harmonics of the notes on its harmonic intervals (+12, +19, +24, +28, +31, +36).
+        Predictions from all lower notes add in linear power and are subtracted from the
+        target's observed power, so a lone bass overtone is removed while a struck note on
+        that overtone (e.g. G4 over C3 or G3) keeps the energy the bass cannot explain.
     """
     if candidate_pitches is None:
         pitches = tuple(
@@ -508,10 +561,11 @@ def calculate_all_candidate_features(
         raw_c_db[p] = np.vstack(c_list)
         raw_flux_db[p] = np.vstack(f_list)
 
-    # Pass 2: Bottom-Up Overtone Masking & Final Score Calculation
-    overtone_mask_lift: dict[int, np.ndarray] = {
-        p: np.zeros_like(raw_c_db[p]) for p in pitches
+    # Pass 2: Bottom-Up Predicted-Partial Subtraction & Final Score Calculation
+    predicted_power: dict[int, np.ndarray] = {
+        p: np.zeros_like(raw_h_db[p]) for p in pitches
     }
+    max_partial = 8 * len(fingerprint_config.harmonic_numbers)
     presence_scores: dict[int, np.ndarray] = {}
     onset_scores: dict[int, np.ndarray] = {}
 
@@ -525,8 +579,11 @@ def calculate_all_candidate_features(
         n_h_p = len(fp)
         w_arr = np.asarray([c.weight for c in fp], dtype=np.float64)
 
-        # Net harmonic contrast above both local background and lower-note overtone mask
-        eff_c_db = raw_c_db[p] - overtone_mask_lift[p]
+        # Net harmonic contrast after removing the power lower notes' partials explain:
+        # lift = -10 log10(1 - predicted / observed), capped at 40 dB when fully explained
+        obs_power = 10.0 ** (raw_h_db[p] / 10.0)
+        explained = np.clip(predicted_power[p] / np.maximum(obs_power, 1e-30), 0.0, 1.0 - 1e-4)
+        eff_c_db = raw_c_db[p] + 10.0 * np.log10(1.0 - explained)
         ev_matrix = contrast_to_evidence(
             eff_c_db,
             midpoint_db=fingerprint_config.evidence_midpoint_db,
@@ -557,50 +614,28 @@ def calculate_all_candidate_features(
         )
         onset_scores[p] = raw_onset * np.sqrt(np.maximum(anchor_score, 0.0))
 
-        # Propagate `p`'s overtones upward to harmonic-multiple intervals:
-        # Estimate `p`'s independent strength from its odd harmonics (h1, h3)
-        c_h1 = np.maximum(0.0, eff_c_db[0, :])
-        c_h3 = np.maximum(0.0, eff_c_db[2, :]) if n_h_p > 2 else np.zeros(n_frames)
-        odd_base_contrast = np.maximum(c_h1, 0.85 * c_h3)
+        # Propagate `p`'s predicted partial power upward: harmonic h of target `p + off`
+        # sits on partial (mult_m * h) of `p`, predicted from `p`'s h1 level and ratio profile.
+        # A source also needs its own fundamental: a bass note found only through the h2*h3
+        # rescue may be the virtual fundamental of a fifth (G3 + D4 implies G2) and must not
+        # erase the notes that imply it.
+        active_note_gate = (pres > 0.25) & (e_h1 > fingerprint_config.source_min_h1_evidence)
+        if not np.any(active_note_gate):
+            continue
+        ratio_db = _partial_ratio_profile(
+            raw_h_db[p], active_note_gate, fingerprint_config, max_partial
+        )
+        src_h1_db = raw_h_db[p][0, :] + fingerprint_config.partial_prediction_margin_db
+        gate = active_note_gate.astype(np.float64)
 
-        active_note_gate = (pres > 0.25).astype(np.float64)
-        source_strength = odd_base_contrast * active_note_gate
-
-        # (a) Octave interval (+12 semitones, m = 2):
-        #     Suppresses upper octave if its fundamental is just the decaying 2nd harmonic of `p`,
-        #     but allows it through when `p + 12` is genuinely struck alongside `p`.
-        if (p + 12) in overtone_mask_lift and len(fps[p + 12]) > 0:
-            n_h_t = len(fps[p + 12])
-            h1_diff = raw_h_db[p + 12][0, :] - raw_h_db[p][0, :]
-            octave_dom = np.clip((1.5 - h1_diff) / 4.0, 0.25, 1.0)
-            for h_idx in range(n_h_t):
-                decay = 0.92 ** h_idx
-                overtone_mask_lift[p + 12][h_idx, :] = np.maximum(
-                    overtone_mask_lift[p + 12][h_idx, :],
-                    source_strength * octave_dom * decay,
-                )
-
-        # (b) Non-octave overtone intervals: m=3 (+19), m=4 (+24), m=5 (+28), m=6 (+31), m=8 (+36)
-        for semitone_off, mult_m, mask_scale in (
-            (19, 3, 0.95),
-            (24, 4, 0.92),
-            (28, 5, 0.92),
-            (31, 6, 0.90),
-            (36, 8, 0.85),
-        ):
+        for semitone_off, mult_m in ((12, 2), (19, 3), (24, 4), (28, 5), (31, 6), (36, 8)):
             p_target = p + semitone_off
-            if p_target in overtone_mask_lift and len(fps[p_target]) > 0:
-                n_h_t = len(fps[p_target])
-                if mult_m <= n_h_p:
-                    c_m = np.maximum(0.0, raw_c_db[p][mult_m - 1, :]) * active_note_gate
-                    src = np.maximum(source_strength * (0.88 ** mult_m), c_m * mask_scale)
-                else:
-                    src = source_strength * (0.85 ** mult_m)
-                for h_idx in range(n_h_t):
-                    overtone_mask_lift[p_target][h_idx, :] = np.maximum(
-                        overtone_mask_lift[p_target][h_idx, :],
-                        src * (0.92 ** h_idx),
-                    )
+            if p_target not in predicted_power or len(fps[p_target]) == 0:
+                continue
+            for h_idx in range(len(fps[p_target])):
+                partial = mult_m * (h_idx + 1)
+                pred_db = src_h1_db + ratio_db[partial]
+                predicted_power[p_target][h_idx, :] += gate * (10.0 ** (pred_db / 10.0))
 
     return presence_scores, onset_scores
 
@@ -660,7 +695,7 @@ def calculate_unexpected_pitch_feature(
     of played notes are already suppressed. We additionally exclude direct harmonic intervals
     and sub-octave aliases of `score_pitches`.
     """
-    excluded_offsets = (0, -12, 12, 19, 24, 28, 31, 34, 36, 38)
+    excluded_offsets = (0, -24, -19, -12, 12, 19, 24, 28, 31, 34, 36, 38)
     explainable = {
         p + off
         for p in score_pitches

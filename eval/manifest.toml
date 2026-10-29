@@ -1,0 +1,205 @@
+# Every evaluated recording. Audio paths are relative to the repo root.
+# Labels live at eval/labels/<piece>/<id>.toml. split = "dev" | "test"
+# (test is only scored with `python -m eval.cli run --split test`).
+# Add new takes with: python -m eval.cli new-take <audio> --piece <piece> [--split test]
+
+[[take]]
+id = "c_major_asc"
+piece = "c_major_rh"
+audio = "recordings/aloud/c_major_asc.wav"
+split = "dev"
+
+[[take]]
+id = "c_scale_1h_1wrong"
+piece = "c_major_rh"
+audio = "recordings/wrong_notes/processed/c_scale_1h_1wrong.wav"
+split = "dev"
+
+
+
+[[take]]
+id = "odeharm"
+piece = "ode_harmony"
+audio = "recordings/aloud/odeharm.wav"
+split = "dev"
+
+[[take]]
+id = "ode_harm_1wrongM"
+piece = "ode_harmony"
+audio = "recordings/wrong_notes/processed/ode_harm_1wrongM.wav"
+split = "dev"
+
+[[take]]
+id = "ode_harm_1wrongH"
+piece = "ode_harmony"
+audio = "recordings/wrong_notes/processed/ode_harm_1wrongH.wav"
+split = "dev"
+
+[[take]]
+id = "1can-1h-1"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/raw/1can-1h-1.m4a"
+split = "dev"
+
+[[take]]
+id = "1can-2h-1"
+piece = "canon_both"
+audio = "recordings/eval-interviews/raw/1can-2h-1.m4a"
+split = "dev"
+exclude = "backtracks to the start of measure 5 mid-take"
+
+[[take]]
+id = "1can-1h-2"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/raw/1can-1h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "1can-2h-2"
+piece = "canon_both"
+audio = "recordings/eval-interviews/raw/1can-2h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "1cmajor-2h-up"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/raw/1cmajor-2h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "2can-1h-1"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/raw/2can-1h-1.m4a"
+split = "dev"
+
+[[take]]
+id = "2can-2h-1"
+piece = "canon_both"
+audio = "recordings/eval-interviews/raw/2can-2h-1.m4a"
+split = "dev"
+
+[[take]]
+id = "2can-1h-2"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/raw/2can-1h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "2can-2h-2"
+piece = "canon_both"
+audio = "recordings/eval-interviews/raw/2can-2h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "2cmajor-2h-up"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/raw/2cmajor-2h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/1ode-1h-1.m4a"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-2"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/1ode-1h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/1ode-1h-3.m4a"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-inc"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/1ode-1h-inc.m4a"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-miss"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/1ode-1h-miss.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-1.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-2"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-2.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-3.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-inc"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-inc.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-miss"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-miss.m4a"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-wrong"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/raw/2ode-1h-wrong.m4a"
+split = "dev"
+
+[[take]]
+id = "1cmajor-up"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/raw/1cmajor-up.m4a"
+split = "dev"
+
+[[take]]
+id = "2cmajor-1h-up"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/raw/2cmajor-1h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "1emajor-1h-up"
+piece = "e_major_rh"
+audio = "recordings/eval-interviews/raw/1emajor-1h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "2emajor-1h-up"
+piece = "e_major_rh"
+audio = "recordings/eval-interviews/raw/2emajor-1h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "1emajor-1h-down"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/raw/1emajor-1h-down.m4a"
+split = "dev"
+
+[[take]]
+id = "1emajor-2h-up"
+piece = "e_major_both"
+audio = "recordings/eval-interviews/raw/1emajor-2h-up.m4a"
+split = "dev"
+
+[[take]]
+id = "2emajor-2h-up"
+piece = "e_major_both"
+audio = "recordings/eval-interviews/raw/2emajor-2h-up.m4a"
+split = "dev"

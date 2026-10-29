@@ -1,0 +1,13 @@
+# Mirrors score_models._ode_to_joy_without_harmony (first phrase).
+name = "ode_melody"
+title = "Ode to Joy, first phrase, melody only"
+time_signature = [4, 4]
+bpm = 136.36
+
+[hands]
+RH = [
+  ["E4", 1], ["E4", 1], ["F4", 1], ["G4", 1],
+  ["G4", 1], ["F4", 1], ["E4", 1], ["D4", 1],
+  ["C4", 1], ["C4", 1], ["D4", 1], ["E4", 1],
+  ["E4", 1.5], ["D4", 0.5], ["D4", 2],
+]

@@ -14,7 +14,7 @@ import numpy as np
 import stft_features
 from score_models import ScoreSegment, midi_to_note_name
 from stft_hmm import (AlignedSegment, SegmentResult, create_initial_alignment,
-                      print_diagnostic_report, save_alignment_plot)
+                      name_substitutes, print_diagnostic_report, save_alignment_plot)
 
 
 @dataclass
@@ -33,6 +33,8 @@ class TimingConfig:
     present_threshold: float = 0.40
     present_fraction: float = 0.40
     wrong_min_score: float = 0.40
+    sub_onset_threshold: float = 0.5   # substitute must be freshly struck ...
+    sub_attack_fraction: float = 0.4   # ... within this leading fraction of the segment
 
 
 # ---------------------------------------------------------------- observations
@@ -143,8 +145,6 @@ def path_to_intervals(path, states, n_seg, T):
 
 # ---------------------------------------------------------------- grading
 def grade(intervals, alignment, bundle, cfg: TimingConfig) -> list[SegmentResult]:
-    P = sorted(bundle.candidate_scores)
-    M = np.vstack([bundle.candidate_scores[p] for p in P])
     out = []
     for a, (s, e) in zip(alignment, intervals):
         d = e - s + 1
@@ -155,17 +155,15 @@ def grade(intervals, alignment, bundle, cfg: TimingConfig) -> list[SegmentResult
         detected = tuple(p for p in exp
                          if np.mean(bundle.candidate_scores[p][body] >= cfg.present_threshold)
                          >= cfg.present_fraction)
-        med = np.median(M[:, body], axis=1)                    # robust per-pitch evidence
-        order = np.argsort(med)[::-1]
-        observed = detected
-        if set(exp) - set(detected):
-            top = [P[i] for i in order[:max(1, len(exp))] if med[i] >= cfg.wrong_min_score]
-            observed = tuple(sorted(set(detected) | set(top))) if top else detected
+        subs = name_substitutes(
+            bundle, s, e, body, a.score_segment, detected, out[-1].substitutes if out else (),
+            onset_threshold=cfg.sub_onset_threshold, attack_fraction=cfg.sub_attack_fraction,
+            presence_threshold=cfg.wrong_min_score)
         out.append(SegmentResult(
             segment_index=a.score_segment.index, expected_pitches=exp,
             start_frame=s, end_frame=e,
             expected_start_frame=a.start_frame, expected_end_frame=a.end_frame,
-            detected_pitches=detected, observed_pitches=observed, has_ghost_wrong=False))
+            detected_pitches=detected, has_ghost_wrong=False, substitutes=subs))
     return out
 
 
