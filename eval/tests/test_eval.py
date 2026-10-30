@@ -11,7 +11,7 @@ from stft_hmm import SegmentResult
 from eval.adapters import segments_to_note_predictions
 from eval.contract import ExtraNotePrediction, NotePrediction, TakePrediction
 from eval.labels import GoldError, TakeLabels, load_labels
-from eval.metrics import evaluate_take, summarize
+from eval.metrics import evaluate_take, subset, summarize
 from eval.pieces import all_pieces, load_piece, parse_pitch
 
 
@@ -182,6 +182,18 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(m["failed_takes"], ["t"])
         self.assertEqual(m["error"]["fn"], 1)
 
+    def test_subset_matches_summarize(self):
+        both = load_piece("c_major_both")
+        a = evaluate_take("a", self.spec, TakeLabels("c_major_rh", False, [GoldError("wrong_pitch", "RH4", played=64)]),
+                          all_correct(self.spec, RH4=NotePrediction("RH4", "wrong_pitch", 64),
+                                      RH2=NotePrediction("RH2", "missed")))
+        b = evaluate_take("b", self.spec, TakeLabels("c_major_rh", True), all_correct(self.spec))
+        c = evaluate_take("c", both, TakeLabels("c_major_both", False, [GoldError("missed", "LH1")]), None)
+        full = summarize([a, b, c])
+        rows = a.rows + b.rows + c.rows
+        self.assertEqual(subset(full, rows, {"c_major_rh"}), summarize([a, b]))
+        self.assertEqual(subset(full, rows, {"c_major_rh", "c_major_both"}), full)
+
     def test_prediction_validation(self):
         with self.assertRaises(ValueError):
             TakePrediction(notes=[NotePrediction("RH1", "correct")]).validate(
@@ -264,6 +276,41 @@ class TestSheetImport(unittest.TestCase):
         rows = rows[:-1]                                                       # RH8 row missing
         res = parse_sheet(self._sheet(rows), self._takes()[:1], all_pieces())
         self.assertEqual(len(res.problems), 3)
+
+    def test_todo_take_not_imported(self):
+        from eval.sheet import parse_sheet
+        rows = self._rows({"RH3": "t1,c_major_rh,RH3,E4,1,3,todo,,,"})
+        res = parse_sheet(self._sheet(rows), self._takes()[:1], all_pieces())
+        self.assertEqual((res.problems, res.todo, list(res.takes)), ([], ["t1"], []))
+
+
+class TestIntake(unittest.TestCase):
+    def test_names_of_registered_takes(self):
+        from eval.intake import infer_piece, load_intake
+        from eval.labels import load_manifest
+        _, rules = load_intake()
+        for t in load_manifest():
+            if "eval-interviews" in str(t.audio):
+                self.assertEqual(infer_piece(t.id, rules)[0], t.piece, t.id)
+        self.assertEqual(infer_piece("3emajor-down", rules)[0], "e_major_rh_down")
+        self.assertIsNone(infer_piece("1cmajor-1h-down", rules)[0])     # no descending C major spec
+        self.assertIsNone(infer_piece("1waltz-1h", rules)[0])
+
+    def test_find_new_recordings(self):
+        from eval.intake import find_new_recordings, load_intake
+        from eval.labels import Take
+        _, rules = load_intake()
+        d = Path(tempfile.mkdtemp())
+        for name, data in [("1ode-2h-1.m4a", b"a"), ("1ode-2h-1 2.m4a", b"b"), ("1ode-2h-9.m4a", b"a"),
+                           ("old.m4a", b"c"), ("1harp-1h.m4a", b"d"), ("notes.txt", b"e")]:
+            (d / name).write_bytes(data)
+        takes = [Take("old", "c_major_rh", d / "old.m4a", "dev")]
+        got = {c.path.name: (c.piece, c.problem) for c in find_new_recordings(takes, all_pieces(), [d], rules)}
+        self.assertEqual(set(got), {"1ode-2h-1.m4a", "1ode-2h-1 2.m4a", "1ode-2h-9.m4a", "1harp-1h.m4a"})
+        self.assertEqual(got["1ode-2h-1.m4a"], ("ode_harmony", ""))
+        self.assertIn("identical", got["1ode-2h-9.m4a"][1])
+        self.assertIn("spaces", got["1ode-2h-1 2.m4a"][1])
+        self.assertIn("no rule", got["1harp-1h.m4a"][1])
 
 
 if __name__ == "__main__":

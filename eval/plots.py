@@ -123,7 +123,7 @@ def plot_overview(metrics: dict, run_name: str = ""):
     ax2.set_xticks([0, 0.5, 1.0])
     ax2.set_xlabel("recall (share of labeled errors caught)")
     _clean_axes(ax2)
-    ax2.set_title("Recall by error type, all takes", loc="left", fontsize=11, color=INK, pad=10)
+    ax2.set_title("Recall by error type, every take shown", loc="left", fontsize=11, color=INK, pad=10)
 
     o_err = o["error"]
     _title(fig, f"Error F1 {_fmt(o_err['f1'])}  ·  precision {_fmt(o_err['precision'])}  ·  "

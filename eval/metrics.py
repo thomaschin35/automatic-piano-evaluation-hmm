@@ -163,6 +163,29 @@ def aggregate(evals: list[TakeEval]) -> dict:
     return block
 
 
+def _from_block(take_id: str, piece: str, b: dict) -> TakeEval:
+    """Rebuild a TakeEval's counters from its saved single-take block (metrics.json by_take)."""
+    counts = Counter({f"{k}.{x}": b[k][x] for k in COUNT_KEYS for x in ("tp", "fp", "fn")})
+    conf = Counter({(g, p): n for g, row in b["confusion"].items() for p, n in row.items()})
+    played_total = b["played_pitch_n"]
+    return TakeEval(
+        take_id, piece, perfect=b["perfect_takes"]["n"] == 1, failed=bool(b["failed_takes"]),
+        counts=counts, confusion=conf,
+        played_hits=round((b["played_pitch_accuracy"] or 0) * played_total), played_total=played_total,
+        pred_errors=b["combined"]["tp"] + b["combined"]["fp"],
+        gold_errors=b["combined"]["tp"] + b["combined"]["fn"],
+        unsupported=frozenset(b["unsupported_types"]),
+        rows=[{}] * b["n_notes"])
+
+
+def subset(metrics: dict, rows: list[dict], pieces: set[str]) -> dict:
+    """Re-summarize a saved run restricted to some pieces (same shape as summarize())."""
+    piece_of = {r["take"]: r["piece"] for r in rows}
+    evals = [_from_block(t, piece_of[t], b) for t, b in metrics["by_take"].items()
+             if piece_of.get(t) in pieces]
+    return summarize(evals)
+
+
 def summarize(evals: list[TakeEval]) -> dict:
     pieces = sorted({ev.piece for ev in evals})
     return {

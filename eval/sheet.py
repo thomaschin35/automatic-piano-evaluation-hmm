@@ -13,6 +13,8 @@ Rules:
   * Every score note of a take must appear exactly once, with the score's pitch
     (guards against rows that were sorted or pasted out of place).
   * label: correct | wrong_pitch | missed | extra (case-insensitive).
+    A take with any row still labeled `todo` (the template default) is not
+    imported: it hasn't been listened to yet. Its label file is left as is.
     An extra row's note_id is the note it follows, or START.
   * label = correct but `played` names a different pitch -> imported as
     wrong_pitch, with a warning (the note was clearly not played as written).
@@ -45,6 +47,7 @@ class SheetResult:
     problems: list[str]
     warnings: list[str]
     skipped: list[str]
+    todo: list[str] = field(default_factory=list)
 
 
 def read_rows(path: Path) -> list[dict]:
@@ -77,7 +80,11 @@ def parse_sheet(path: Path, takes: list[Take], pieces: dict[str, PieceSpec]) -> 
     by_id = {t.id: t for t in takes}
     res = SheetResult({}, [], [], [])
     seen: dict[str, set[str]] = {}
-    for r in read_rows(path):
+    rows = read_rows(path)
+    for r in rows:
+        if r["label"] == "todo" and r["take"] not in res.todo:
+            res.todo.append(r["take"])
+    for r in rows:
         where = f"row {r['row']} ({r['take']} {r['note_id']})"
         if not r["take"]:
             continue
@@ -88,6 +95,8 @@ def parse_sheet(path: Path, takes: list[Take], pieces: dict[str, PieceSpec]) -> 
         if take.exclude:
             if take.id not in res.skipped:
                 res.skipped.append(take.id)
+            continue
+        if take.id in res.todo:
             continue
         if r["piece"] != take.piece:
             res.problems.append(f"{where}: piece '{r['piece']}' but manifest says '{take.piece}'")
@@ -156,8 +165,9 @@ def parse_sheet(path: Path, takes: list[Take], pieces: dict[str, PieceSpec]) -> 
         missing = [n.id for n in pieces[st.take.piece].notes() if n.id not in seen.get(tid, set())]
         if missing:
             res.problems.append(f"{tid}: {len(missing)} score notes have no row (e.g. {', '.join(missing[:5])})")
+    res.todo = [t for t in res.todo if t in by_id and not by_id[t].exclude]
     for t in takes:
-        if not t.exclude and t.id not in res.takes:
+        if not t.exclude and t.id not in res.takes and t.id not in res.todo:
             res.warnings.append(f"{t.id}: in the manifest but not in the sheet (label file left unchanged)")
     return res
 

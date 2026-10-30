@@ -1,0 +1,62 @@
+# How `python -m eval.cli sync` finds new recordings and works out their piece.
+#
+# Recordings are named  <player><piece>-<hands>-<anything>.m4a , for example
+#   1ode-2h-3.m4a      player 1, Ode to Joy, both hands, take 3     -> ode_harmony
+#   2emajor-1h-down    player 2, E major, one hand, descending      -> e_major_rh_down
+#   1cmajor-up         no hands part = one hand                     -> c_major_rh
+# The file name (without extension) becomes the take id.
+#
+# A rule matches when the word after the player digits equals `key`, the hands part
+# equals `hands` (default "1h"), and the name contains every word in `words`.
+# A name may not contain a rule-word ("down", ...) that its rule doesn't ask for,
+# so "1cmajor-1h-down" matches nothing until a descending C major piece exists.
+# Put more specific rules first: the first match wins.
+
+# Folders scanned for new recordings (relative to the repo root).
+folders = ["recordings/eval-interviews/raw"]
+
+[[rule]]
+key = "cmajor"
+hands = "1h"
+piece = "c_major_rh"
+
+[[rule]]
+key = "cmajor"
+hands = "2h"
+piece = "c_major_both"
+
+[[rule]]
+key = "emajor"
+hands = "1h"
+words = ["down"]
+piece = "e_major_rh_down"
+
+[[rule]]
+key = "emajor"
+hands = "1h"
+piece = "e_major_rh"
+
+[[rule]]
+key = "emajor"
+hands = "2h"
+piece = "e_major_both"
+
+[[rule]]
+key = "ode"
+hands = "1h"
+piece = "ode_melody"
+
+[[rule]]
+key = "ode"
+hands = "2h"
+piece = "ode_harmony"
+
+[[rule]]
+key = "can"
+hands = "1h"
+piece = "canon_lh"
+
+[[rule]]
+key = "can"
+hands = "2h"
+piece = "canon_both"
