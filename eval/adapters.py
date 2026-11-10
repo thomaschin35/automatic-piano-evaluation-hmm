@@ -97,7 +97,7 @@ class V3Adapter:
         import dataclasses
         import stft_hmm_v3 as m
         cfg = dataclasses.replace(m.V3Config(), **(overrides or {}))
-        an = m.analyze(bundle, cfg)
+        an = m.analyze(bundle, cfg, piece.beats_per_measure, piece.pickup_beats)
         rep = m.report(an, cfg, bundle)
         return report_to_prediction(an, rep, piece, bundle.audio.trim_offset_seconds, self.capabilities)
 
@@ -107,7 +107,7 @@ class V3Adapter:
         out_dir.mkdir(parents=True, exist_ok=True)
         bundle = load_bundle(audio_path, piece.name)
         cfg = m.V3Config()
-        an = m.analyze(bundle, cfg)
+        an = m.analyze(bundle, cfg, piece.beats_per_measure, piece.pickup_beats)
         rep = m.report(an, cfg, bundle)
         log = io.StringIO()
         with contextlib.redirect_stdout(log):

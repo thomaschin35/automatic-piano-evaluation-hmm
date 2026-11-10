@@ -59,6 +59,9 @@ class V3Config:
     timing_cap: float = 4.0
     chord_missing_cost: float = 2.0   # per expected pitch absent from a matched event (two voices)
     stop_cost: float = 6.0            # at most this much for the notes left unplayed at the end
+    back_cost_bar: float = 5.0        # going back to the start of a bar (or of the piece) and playing on
+    back_cost_any: float = 7.0        # going back to any other earlier note
+    back_min_notes: int = 2           # replaying fewer notes than this is a re-strike (an extra), not a restart
     # --- timing verdicts
     slow_ratio: float = 1.5           # a gap this many times its written length is a timing error:
     sounding_level: float = 0.5       #   note still sounding (>= this x its level) up to the next strike
@@ -91,6 +94,7 @@ class Position:
     beat: float
     pitches: tuple[int, ...]
     segment_index: int
+    bar_start: bool = False
 
 
 @dataclass
@@ -180,12 +184,25 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
     return events
 
 
-def score_positions(bundle) -> list[Position]:
+def score_positions(bundle, beats_per_measure: float = 4.0, pickup_beats: float = 0.0) -> list[Position]:
     out = []
     for seg in bundle.segments:
         if seg.onset_pitches:
-            out.append(Position(len(out), seg.start_beat, tuple(seg.onset_pitches), seg.index))
+            in_bar = (seg.start_beat - pickup_beats) % beats_per_measure
+            out.append(Position(len(out), seg.start_beat, tuple(seg.onset_pitches), seg.index,
+                                bar_start=min(in_bar, beats_per_measure - in_bar) < 1e-6 or not out))
     return out
+
+
+def back_costs(positions: list[Position], cfg: V3Config) -> np.ndarray:
+    """[j', j] cost of resuming at an earlier position j after playing j' (inf where not allowed).
+    Learners restart where the music restarts: at a bar line far more often than mid-bar."""
+    J = len(positions)
+    jj = np.arange(J)
+    target = np.where([p.bar_start for p in positions], cfg.back_cost_bar, cfg.back_cost_any)
+    cost = np.broadcast_to(target[None, :], (J, J)).copy()
+    cost[jj[:, None] - jj[None, :] < cfg.back_min_notes - 1] = np.inf    # replaying j..j' is j'-j+1 notes
+    return cost
 
 
 # ---------------------------------------------------------------- emission
@@ -316,13 +333,14 @@ def _local_spb(events, positions, matches, spf, fallback: float) -> np.ndarray:
     return np.interp([ev.frame for ev in events], ts, sm)
 
 
-def analyze(bundle, cfg: V3Config | None = None, back_cost_fn=None) -> Analysis:
+def analyze(bundle, cfg: V3Config | None = None, beats_per_measure: float = 4.0,
+            pickup_beats: float = 0.0, backtracking: bool = True) -> Analysis:
     cfg = cfg or V3Config()
     spf = bundle.audio.seconds_per_frame
     events = detect_events(bundle, cfg)
-    positions = score_positions(bundle)
+    positions = score_positions(bundle, beats_per_measure, pickup_beats)
     E = len(events)
-    back = back_cost_fn(positions, cfg) if back_cost_fn else None
+    back = back_costs(positions, cfg) if backtracking and positions else None
     base = _initial_spb(events, positions, spf)
     best = None
     for mult in (0.5, 0.71, 1.0, 1.41, 2.0):
