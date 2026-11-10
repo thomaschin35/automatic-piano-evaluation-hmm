@@ -4,6 +4,8 @@ Synthetic error cases built from CLEAN monophonic takes, so the model can be che
 of labelled mistakes without new recordings.
 
 Two ways to make a mistake out of a correct performance:
+Conventions (same as the hand labels): a wrong key followed by the right one is "wrong_pitch" on
+that note; only a re-strike of a neighbouring note is "extra".
   * wrong score  - keep the audio, change the score it is graded against
                    (sub, shift, miss_ins_step, miss_ins_repeat, extra_score);
   * spliced time - keep the score, cut / repeat / reorder the feature frames at note boundaries
@@ -137,8 +139,11 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
     if "extra_score" in kinds:                     # a played note has no place in the score
         for i in range(1, n - 1):
             q = ev[:i] + ev[i + 1:]
-            yield _case("extra_score", take_id, bundle, _respec(spec, hand, q),
-                        [GoldError("extra", after=nid(i - 1), played=P[i])], note=i)
+            if P[i] in (P[i - 1], P[i + 1]):       # re-strike of a neighbour: an extra note
+                gold = [GoldError("extra", after=nid(i - 1), played=P[i])]
+            else:                                  # a different key before the right one: labelled, as in the
+                gold = [GoldError("wrong_pitch", note_id=nid(i), played=P[i])]   # real takes, as wrong pitch
+            yield _case("extra_score", take_id, bundle, _respec(spec, hand, q), gold, note=i)
 
     if "extra_dup" in kinds:                       # a note is struck twice
         for i in range(1, n - 1):
@@ -167,7 +172,8 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
         notes = spec.notes()
         bar_starts = [k for k, nt in enumerate(notes) if abs(nt.beat_in_measure - 1.0) < 1e-6]
         for j in range(3, n):
-            targets = {0, max([b for b in bar_starts if b < j], default=0), j - 1}
+            # going back a single note is a stutter (extra_dup), not a restart
+            targets = {r for r in (0, max([b for b in bar_starts if b < j], default=0)) if j - r >= 2}
             for r in sorted(targets):
                 frames = np.concatenate([np.arange(0, cut[j]), np.arange(cut[r], T)])
                 yield _case("restart", take_id, splice(bundle, frames), spec, [],

@@ -84,8 +84,69 @@ class V2Adapter:
                               artifacts={"plot": str(plot), "stdout": str(out_dir / "model_stdout.txt")})
 
 
+class V3Adapter:
+    name = "v3"
+    capabilities = frozenset({"wrong_pitch", "missed", "extra"})
+    onset_only = {"sub_cost": 0.0}           # pitch-blind alignment: any event may stand for any note
+
+    def config(self) -> dict:
+        from stft_hmm_v3 import V3Config
+        return asdict(V3Config())
+
+    def predict_bundle(self, bundle, piece: PieceSpec, overrides: dict | None = None) -> TakePrediction:
+        import dataclasses
+        import stft_hmm_v3 as m
+        cfg = dataclasses.replace(m.V3Config(), **(overrides or {}))
+        an = m.analyze(bundle, cfg)
+        rep = m.report(an, cfg)
+        return report_to_prediction(an, rep, piece, bundle.audio.trim_offset_seconds, self.capabilities)
+
+    def predict(self, audio_path: str, piece: PieceSpec, out_dir: Path) -> TakePrediction:
+        import stft_hmm_v3 as m
+        from eval.cache import load_bundle
+        out_dir.mkdir(parents=True, exist_ok=True)
+        bundle = load_bundle(audio_path, piece.name)
+        cfg = m.V3Config()
+        an = m.analyze(bundle, cfg)
+        rep = m.report(an, cfg)
+        log = io.StringIO()
+        with contextlib.redirect_stdout(log):
+            m.print_report(an, rep)
+        (out_dir / "model_stdout.txt").write_text(log.getvalue())
+        pred = report_to_prediction(an, rep, piece, bundle.audio.trim_offset_seconds, self.capabilities)
+        pred.artifacts = {"stdout": str(out_dir / "model_stdout.txt")}
+        return pred
+
+
+def report_to_prediction(an, rep, spec: PieceSpec, offset_s: float, capabilities) -> TakePrediction:
+    """Map v3 per-position verdicts onto score note ids."""
+    from eval.contract import ExtraNotePrediction
+    spf = an.seconds_per_frame
+    by_beat = {round(p.beat, 4): p for p in an.positions}
+    notes_at: dict[int, list] = {}
+    preds = []
+    for n in spec.notes():
+        pos = by_beat[round(n.start_beat, 4)]
+        notes_at.setdefault(pos.index, []).append(n)
+        v = next(v for v in rep.verdicts[pos.index] if v.pitch == n.pitch)
+        onset = v.frame * spf + offset_s if v.frame is not None else None
+        flags = frozenset(getattr(v, "flags", ()) or ())
+        preds.append(NotePrediction(n.id, v.label, v.played, onset, flags))
+
+    def anchor(pos_index):
+        if pos_index is None:
+            return None
+        ns = notes_at[pos_index]
+        return ns[0].id
+
+    extras = [ExtraNotePrediction(anchor(after), pitch, frame * spf + offset_s) for after, pitch, frame in rep.extras]
+    restarts = [(notes_at[a][0].id, notes_at[b][0].id) for a, b in rep.restarts]
+    return TakePrediction(notes=preds, extras=extras, capabilities=capabilities, restarts=restarts)
+
+
 ADAPTERS = {
     "v2": V2Adapter,
+    "v3": V3Adapter,
 }
 
 

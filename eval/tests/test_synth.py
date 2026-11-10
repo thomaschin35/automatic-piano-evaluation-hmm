@@ -78,9 +78,10 @@ class Generators(unittest.TestCase):
 
     def test_extra_dup_and_restart_lengths(self):
         self.assertTrue(all(c.bundle.audio.num_frames == self.b.audio.num_frames + 10 for c in self.kind("extra_dup")))
-        c = next(c for c in self.kind("restart") if c.meta["stop"] == 5 and c.meta["resume"] == 4)
-        self.assertEqual(c.bundle.audio.num_frames, self.b.audio.num_frames + 10)
-        self.assertEqual(c.meta["restart"], ("RH5", "RH5"))
+        c = next(c for c in self.kind("restart") if c.meta["stop"] == 6 and c.meta["resume"] == 4)
+        self.assertEqual(c.bundle.audio.num_frames, self.b.audio.num_frames + 20)
+        self.assertEqual(c.meta["restart"], ("RH6", "RH5"))
+        self.assertTrue(all(c.meta["stop"] - c.meta["resume"] >= 2 for c in self.kind("restart")))
 
     def test_stop_early_marks_the_rest_missed(self):
         c = self.kind("stop_early")[-1]

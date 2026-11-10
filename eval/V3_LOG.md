@@ -73,3 +73,86 @@ REAL-TAKE DISAGREEMENTS (37)
   1emajor-2h-up RH3 G#4 gold=correct pred=missed
   2emajor-2h-up RH4 A4 gold=correct pred=missed
 ```
+
+### Decisions taken while building v3 (phases 1-3)
+
+- **Decode strikes, not frames.** v2's frame-level chain could not express a missed, extra or
+  repeated note. v3 detects key strikes (per-pitch onset peak followed by sustained presence) and
+  runs the HMM over that event sequence with the score position as hidden state. Phases 1-3 of the
+  plan (grading, onset stream, state graph) are therefore one model, checked against all three gates.
+- **Strike salience** = sustained presence after the onset x onset strength. On the labelled takes
+  every real strike has onset score >= 0.65 and salience >= 0.35; noise events sit below both.
+- **Wrong key, then the right one** is reported as wrong pitch on that note (marked corrected),
+  matching how the hand labels treat it (`2can-1h-2` LH13). Only a re-strike of a neighbouring note
+  is an "extra". The synthetic `extra_score` gold follows the same convention.
+- **A missed note inside a run of equal pitches** (E E -> E) cannot be located by ear, so the
+  metric accepts a "missed" anywhere in that run.
+- The old "onset-only" test (pitch term off) passed for v2 on clean takes (11/12); it only
+  failed on takes with errors. For v3 it means pitch-blind alignment and is reported, not gated.
+  The `shift` cases and `2ode-1h-wrong` test the real concern (wrong notes sliding the alignment).
+- Thresholds were read off pooled statistics of both players, not a player-1/player-2 split as
+  planned; the per-player rows and the sensitivity check (phase 7) are the guard against overfitting.
+
+## 2026-11-10 17:38  Phases 1-3: note-level HMM over strike events (first accepted v3)
+
+```
+SCOREBOARD  model=v3  (25.7s)
+
+REAL TAKES        takes notes | goal F1 | strict P     R    F1 | wrong missed extra  held  late | clean
+  all                32   814 |   0.75  |       0.71  0.87  0.78 |  0.92  0.46  0.00  0.00  0.00 | 13/17
+  mono               22   477 |   0.93  |       1.00  0.96  0.98 |  0.98  1.00   -    0.00  0.00 | 12/12
+  two_hand           10   337 |   0.59  |       0.50  0.76  0.60 |  0.81  0.39  0.00  0.00   -   | 1/5
+  mono_p1            10   227 |   1.00  |       1.00  1.00  1.00 |  1.00  1.00   -     -    0.00 | 6/6
+  mono_p2            10   234 |   0.75  |       1.00  0.86  0.92 |  0.91  1.00   -    0.00  0.00 | 5/5
+  goal counts (mono): strict tp/fp/fn=27/0/1  held_long tp/fp/fn=0/0/3  late=0/0/5  extra=0/0/0
+
+ONSET-ONLY (pitch term off): 12/12 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R | false flags/case
+  clean                          12 |  1.00 |        -     -     -   |    -    | 0.00
+  sub                           552 |  0.98 |       0.98  0.98  0.98 |    -    | 0.02
+  shift                          66 |  0.83 |       0.93  0.84  0.88 |    -    | 0.21
+  miss_ins_step                 126 |  0.82 |       0.69  0.82  0.75 |    -    | 0.37
+  miss_ins_repeat               126 |  0.94 |       0.89  0.94  0.92 |    -    | 0.11
+  miss_del                      114 |  0.89 |       0.80  0.89  0.84 |    -    | 0.23
+  extra_score                   114 |  0.89 |       0.90  0.86  0.88 |   1.00  | 0.11
+  extra_dup                     114 |  0.81 |       0.00   -    0.00 |   0.83  | 0.18
+  hesitate                      126 |  1.00 |        -     -     -   |    -    | 0.00
+  stop_early                     24 |  1.00 |       1.00  1.00  1.00 |    -    | 0.00
+  restart                       156 |  0.00 |       0.00   -    0.00 |    -    | 5.76 | restart located  0.00
+
+REAL-TAKE DISAGREEMENTS (33)
+  odeharm RH10 C4 gold=correct pred=missed
+  1can-1h-2 LH37 A2 gold=correct+late pred=correct
+  1can-2h-2 RH2 E5 gold=correct pred=missed
+  1can-2h-2 RH6 A4 gold=correct pred=missed
+  1cmajor-2h-up RH1 C4 gold=correct pred=missed
+  1cmajor-2h-up RH2 D4 gold=correct pred=missed
+  1cmajor-2h-up RH4 F4 gold=correct pred=missed
+  1cmajor-2h-up RH6 A4 gold=correct pred=missed
+  2can-1h-1 LH41 B2 gold=correct+held_long pred=correct
+  2can-1h-1 LH53 D2 gold=correct+late pred=correct
+  2can-2h-1 RH2 E5 gold=correct pred=missed
+  2can-2h-1 RH4 C#5 gold=correct pred=wrong_pitch
+  2can-1h-2 LH21 D2 gold=correct+late pred=correct
+  2can-1h-2 LH29 A2 gold=correct+held_long pred=correct
+  2can-1h-2 LH42 F#3 gold=correct+held_long pred=correct
+  2can-1h-2 LH61 A2 gold=correct+late pred=correct
+  2can-2h-2 LH21 D2 gold=wrong_pitch+held_long pred=wrong_pitch
+  2can-2h-2 LH22 A2 gold=wrong_pitch pred=missed
+  2can-2h-2 LH23 D3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH24 F#3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH30 E3 gold=missed pred=correct
+  2can-2h-2 LH31 A3 gold=missed pred=correct
+  2can-2h-2 LH32 C#4 gold=missed pred=correct
+  2can-2h-2 RH2 E5 gold=correct pred=missed
+  2can-2h-2 LH53 D2 gold=correct pred=wrong_pitch
+  2can-2h-2 LH63 A3 gold=correct pred=wrong_pitch
+  2cmajor-2h-up RH1 C4 gold=correct pred=missed
+  2cmajor-2h-up RH2 D4 gold=correct pred=missed
+  2ode-1h-wrong RH7 E4 gold=wrong_pitch pred=correct
+  2ode-1h-wrong RH9 C4 gold=correct+late pred=correct
+  2emajor-2h-up RH2 F#4 gold=correct pred=missed
+  2emajor-2h-up RH4 A4 gold=correct pred=missed
+  2can-2h-1 extras tp/fp/fn=0/1/0
+```
