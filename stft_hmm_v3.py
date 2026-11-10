@@ -41,6 +41,11 @@ class V3Config:
     ghost_ratio: float = 0.85         # a sub-harmonic weaker than this x the note above it is a ghost
     leak_ratio: float = 0.80          # a semitone neighbour weaker than this x its neighbour is leakage
     match_min_salience: float = 0.30  # an expected pitch counts as struck from this salience up
+    # score pitches that sit on a harmonic of another score pitch (octave, fifth, third above the
+    # bass) are erased by the front end's overtone subtraction; for those only, a strike is also
+    # read straight off the spectrum: the fundamental's level must jump and stand out as a peak
+    raw_rise_db: float = 6.0
+    raw_peak_db: float = 10.0
     # --- alignment costs (lower is better)
     sub_cost: float = 3.0             # event explains a position with the wrong pitch
     sub_cost_near: float = 2.5        # ... when it is a neighbouring key (within a whole tone): the usual slip
@@ -78,6 +83,7 @@ class Event:
     strikes: dict[int, float]                       # every candidate pitch -> salience
     primary: list[tuple[int, float]]                # after removing overtones / leakage / ghosts, strongest first
     explained_by: dict[int, int] = field(default_factory=dict)   # removed pitch -> pitch that explains it
+    raw_only: set = field(default_factory=set)       # pitches seen only as a jump in the spectrum
 
     @property
     def salience(self) -> float:
@@ -127,9 +133,40 @@ def _peaks(x: np.ndarray, height: float, gap: int) -> list[int]:
     return sorted(out)
 
 
+def harmonic_score_pitches(bundle) -> list[int]:
+    pitches = sorted({p for seg in bundle.segments for p in seg.expected_pitches})
+    return [q for q in pitches if any(q - p in OVERTONE_OFFSETS for p in pitches)]
+
+
+def raw_strikes(bundle, pitch: int, cfg: V3Config) -> list[int]:
+    """Frames where the fundamental of `pitch` jumps by raw_rise_db and then stands raw_peak_db
+    above the neighbouring bins. Says that energy arrived at that frequency, not which key sent it."""
+    db = bundle.audio.stft_db
+    n_bins, T = db.shape
+    k = int(round(stft_features.midi_to_frequency(pitch) * (n_bins - 1) * 2 / bundle.audio.sample_rate))
+    if k < 9 or k + 9 >= n_bins or T < 12:
+        return []
+    level = db[k - 1:k + 2].max(axis=0).astype(np.float64)
+    around = np.median(np.vstack([db[k - 8:k - 3], db[k + 4:k + 9]]).astype(np.float64), axis=0)
+
+    def window_mean(x, first, last):                   # mean of x[t+first .. t+last], edges repeated
+        xp = np.pad(x, 8, mode="edge")
+        return np.mean([xp[8 + d:8 + d + T] for d in range(first, last + 1)], axis=0)
+
+    after = window_mean(level, 1, 3)
+    rise = after - window_mean(level, -4, -2)
+    rise[(after - window_mean(around, 1, 3)) < cfg.raw_peak_db] = 0.0
+    return [f for f in _peaks(rise, cfg.raw_rise_db, cfg.same_pitch_gap) if f + cfg.min_frames_after <= T]
+
+
 def detect_events(bundle, cfg: V3Config) -> list[Event]:
     T = bundle.audio.num_frames
     cands: list[tuple[int, int, float]] = []          # (frame, pitch, salience)
+    raw: set[tuple[int, int]] = set()
+    for q in harmonic_score_pitches(bundle):
+        for f in raw_strikes(bundle, q, cfg):
+            cands.append((f, q, cfg.match_min_salience))
+            raw.add((f, q))
     for p, onset in bundle.candidate_onset_scores.items():
         pres = bundle.candidate_scores[p]
         for f in _peaks(onset, cfg.onset_floor, cfg.same_pitch_gap):
@@ -150,6 +187,7 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
     for g in groups:
         strikes: dict[int, float] = {}
         frames: dict[int, int] = {}
+        confirmed = {p for f, p, s in g if (f, p) not in raw}
         for f, p, s in g:
             if s > strikes.get(p, 0.0):
                 strikes[p], frames[p] = s, f
@@ -180,7 +218,7 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
                 kept.remove(q)
                 explained[q] = src
         primary = sorted(((q, strikes[q]) for q in kept), key=lambda x: -x[1])
-        events.append(Event(frames[primary[0][0]], strikes, primary, explained))
+        events.append(Event(frames[primary[0][0]], strikes, primary, explained, set(strikes) - confirmed))
     return events
 
 
@@ -317,7 +355,8 @@ def _local_spb(events, positions, matches, spf, fallback: float) -> np.ndarray:
     """Tempo at each event from neighbouring cleanly matched pairs (running median)."""
     ts, vals = [], []
     for a, b in zip(matches, matches[1:]):
-        if b.kind == "next" and b.position == a.position + 1 and b.event == a.event + 1:
+        if b.kind == "next" and b.position == a.position + 1 and all(
+                events[k].salience < 0.4 for k in range(a.event + 1, b.event)):
             beats = positions[b.position].beat - positions[a.position].beat
             ioi = (events[b.event].frame - events[a.event].frame) * spf
             if beats > 0 and ioi > 0:
@@ -383,7 +422,10 @@ def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg
         if s > 0.0:
             # two keys at once with the stray one at least as strong: the note was not played cleanly
             stray = [(q, sq) for q, sq in free if q not in used and q not in prev_pitches and sq >= cfg.smudge_ratio * s]
-            if len(pos.pitches) == 1 and stray:
+            # an expected pitch seen only as a jump in the spectrum loses to a clearly struck other key
+            doubtful = p in event.raw_only and any(sq >= cfg.sub_min_salience for _, sq in stray)
+            stray = [x for x in stray if x[1] >= cfg.sub_min_salience] if doubtful else stray
+            if (len(pos.pitches) == 1 or doubtful) and stray:
                 used.add(stray[0][0])
                 out.append(PitchVerdict(p, "wrong_pitch", stray[0][0], event.frame))
             else:
@@ -414,8 +456,9 @@ def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
     if the first note rang on through the gap it was held too long, otherwise the second came late."""
     spf = an.seconds_per_frame
     for a, c in zip(an.matches, an.matches[1:]):
-        if c.position != a.position + 1 or c.event != a.event + 1:
-            continue                                   # skips, restarts and corrections explain their own time
+        if c.position != a.position + 1 or any(
+                an.events[k].salience >= cfg.extra_report_salience for k in range(a.event + 1, c.event)):
+            continue                                   # skips, restarts and extra notes explain their own time
         va, vc = rep.verdicts[a.position], rep.verdicts[c.position]
         if any(v.corrected for v in vc):
             continue

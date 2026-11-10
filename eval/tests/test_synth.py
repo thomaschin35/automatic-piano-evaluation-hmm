@@ -13,15 +13,18 @@ from eval.labels import GoldError, TakeLabels
 from eval.pieces import load_piece
 
 
-def fake_bundle(spec, frames_per_note=10):
-    """A perfect performance: each note's pitch sounds for `frames_per_note` frames, onset at its start."""
+def fake_bundle(spec, frames_per_note=10, in_rhythm=False):
+    """A perfect performance: each note's pitch sounds until the next, onset at its start.
+    in_rhythm=True gives every note a length proportional to its written value."""
     notes = spec.notes()
-    T = frames_per_note * len(notes)
+    lengths = [int(round(frames_per_note * ((n.end_beat - n.start_beat) if in_rhythm else 1.0))) for n in notes]
+    starts = [sum(lengths[:i]) for i in range(len(notes))]
+    T = sum(lengths)
     pres = {p: np.zeros(T) for p in range(28, 97)}
     ons = {p: np.zeros(T) for p in range(28, 97)}
-    for i, n in enumerate(notes):
-        pres[n.pitch][i * frames_per_note:(i + 1) * frames_per_note] = 0.9
-        ons[n.pitch][i * frames_per_note + synth.PRE] = 1.0
+    for n, s0, ln in zip(notes, starts, lengths):
+        pres[n.pitch][s0:s0 + ln] = 0.9
+        ons[n.pitch][s0 + synth.PRE] = 1.0
     audio = sf.AudioData(waveform=np.zeros(0), sample_rate=22050, hop_length=512, trim_start_sample=0,
                          trim_end_sample=0, stft_magnitude=np.zeros((0, 0)), stft_db=np.zeros((4, T)),
                          onset_stft_db=np.zeros((0, 0)))

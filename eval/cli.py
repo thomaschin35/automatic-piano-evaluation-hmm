@@ -420,6 +420,7 @@ def cmd_check(args) -> int:
             print(f"REGRESSION on guarded metrics: {', '.join(regressions)}")
     else:
         print("\n(no accepted scoreboard to compare with)")
+        regressions = [f"{board['crashes']} crashed predictions"] if board.get("crashes") else []
     if args.accept:
         if regressions and not args.force:
             print("Not accepted: guarded metrics regressed (use --force to accept anyway).")

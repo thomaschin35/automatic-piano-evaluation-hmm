@@ -4,49 +4,49 @@
   "all": {
    "n_takes": 32,
    "n_notes": 814,
-   "clean": 13,
+   "clean": 17,
    "n_perfect": 17,
-   "played_pitch_accuracy": 0.9736842105263158,
+   "played_pitch_accuracy": 0.9722222222222222,
    "failed": [],
    "error": {
-    "tp": 49,
-    "fp": 17,
-    "fn": 4,
-    "precision": 0.7424242424242424,
-    "recall": 0.9245283018867925,
-    "f1": 0.8235294117647058
+    "tp": 47,
+    "fp": 6,
+    "fn": 6,
+    "precision": 0.8867924528301887,
+    "recall": 0.8867924528301887,
+    "f1": 0.8867924528301887
    },
    "strict": {
-    "tp": 45,
-    "fp": 21,
-    "fn": 8,
-    "precision": 0.6818181818181818,
-    "recall": 0.8490566037735849,
-    "f1": 0.7563025210084033
+    "tp": 43,
+    "fp": 10,
+    "fn": 10,
+    "precision": 0.8113207547169812,
+    "recall": 0.8113207547169812,
+    "f1": 0.8113207547169812
    },
    "goal": {
-    "tp": 45,
-    "fp": 26,
-    "fn": 12,
-    "precision": 0.6338028169014085,
-    "recall": 0.7894736842105263,
-    "f1": 0.703125
+    "tp": 43,
+    "fp": 17,
+    "fn": 14,
+    "precision": 0.7166666666666667,
+    "recall": 0.7543859649122807,
+    "f1": 0.7350427350427351
    },
    "wrong_pitch": {
-    "tp": 38,
-    "fp": 4,
-    "fn": 4,
-    "precision": 0.9047619047619048,
-    "recall": 0.9047619047619048,
-    "f1": 0.9047619047619048
+    "tp": 36,
+    "fp": 5,
+    "fn": 6,
+    "precision": 0.8780487804878049,
+    "recall": 0.8571428571428571,
+    "f1": 0.8674698795180723
    },
    "missed": {
     "tp": 7,
-    "fp": 17,
+    "fp": 5,
     "fn": 4,
-    "precision": 0.2916666666666667,
+    "precision": 0.5833333333333334,
     "recall": 0.6363636363636364,
-    "f1": 0.4
+    "f1": 0.6086956521739131
    },
    "extra": {
     "tp": 0,
@@ -58,7 +58,7 @@
    },
    "held_long": {
     "tp": 0,
-    "fp": 5,
+    "fp": 7,
     "fn": 4,
     "precision": 0.0,
     "recall": 0.0,
@@ -66,11 +66,11 @@
    },
    "late": {
     "tp": 4,
-    "fp": 13,
+    "fp": 15,
     "fn": 1,
-    "precision": 0.23529411764705882,
+    "precision": 0.21052631578947367,
     "recall": 0.8,
-    "f1": 0.36363636363636365
+    "f1": 0.3333333333333333
    }
   },
   "mono": {
@@ -138,59 +138,59 @@
    },
    "late": {
     "tp": 4,
-    "fp": 1,
+    "fp": 3,
     "fn": 1,
-    "precision": 0.8,
+    "precision": 0.5714285714285714,
     "recall": 0.8,
-    "f1": 0.8
+    "f1": 0.6666666666666666
    }
   },
   "two_hand": {
    "n_takes": 10,
    "n_notes": 337,
-   "clean": 1,
+   "clean": 5,
    "n_perfect": 5,
-   "played_pitch_accuracy": 0.9166666666666666,
+   "played_pitch_accuracy": 0.9,
    "failed": [],
    "error": {
-    "tp": 21,
-    "fp": 17,
-    "fn": 4,
-    "precision": 0.5526315789473685,
-    "recall": 0.84,
-    "f1": 0.6666666666666666
+    "tp": 19,
+    "fp": 6,
+    "fn": 6,
+    "precision": 0.76,
+    "recall": 0.76,
+    "f1": 0.76
    },
    "strict": {
-    "tp": 17,
-    "fp": 21,
-    "fn": 8,
-    "precision": 0.4473684210526316,
-    "recall": 0.68,
-    "f1": 0.5396825396825397
+    "tp": 15,
+    "fp": 10,
+    "fn": 10,
+    "precision": 0.6,
+    "recall": 0.6,
+    "f1": 0.6
    },
    "goal": {
-    "tp": 17,
-    "fp": 25,
-    "fn": 9,
-    "precision": 0.40476190476190477,
-    "recall": 0.6538461538461539,
-    "f1": 0.5
+    "tp": 15,
+    "fp": 16,
+    "fn": 11,
+    "precision": 0.4838709677419355,
+    "recall": 0.5769230769230769,
+    "f1": 0.5263157894736842
    },
    "wrong_pitch": {
-    "tp": 12,
-    "fp": 4,
-    "fn": 4,
-    "precision": 0.75,
-    "recall": 0.75,
-    "f1": 0.75
+    "tp": 10,
+    "fp": 5,
+    "fn": 6,
+    "precision": 0.6666666666666666,
+    "recall": 0.625,
+    "f1": 0.6451612903225806
    },
    "missed": {
     "tp": 5,
-    "fp": 17,
+    "fp": 5,
     "fn": 4,
-    "precision": 0.22727272727272727,
+    "precision": 0.5,
     "recall": 0.5555555555555556,
-    "f1": 0.3225806451612903
+    "f1": 0.5263157894736842
    },
    "extra": {
     "tp": 0,
@@ -202,7 +202,7 @@
    },
    "held_long": {
     "tp": 0,
-    "fp": 4,
+    "fp": 6,
     "fn": 1,
     "precision": 0.0,
     "recall": 0.0,
@@ -354,35 +354,32 @@
    },
    "late": {
     "tp": 3,
-    "fp": 1,
+    "fp": 3,
     "fn": 1,
-    "precision": 0.75,
+    "precision": 0.5,
     "recall": 0.75,
-    "f1": 0.75
+    "f1": 0.6
    }
   }
  },
  "real_errors": [
-  "odeharm RH10 C4 gold=correct pred=missed",
   "1can-1h-2 LH37 A2 gold=correct+late pred=correct+held_long|late",
   "1can-2h-2 LH36 F#4 gold=correct pred=correct+held_long",
-  "1can-2h-2 RH2 E5 gold=correct pred=missed",
   "1can-2h-2 RH3 D5 gold=correct pred=correct+late",
   "1can-2h-2 LH41 B2 gold=correct pred=correct+late",
-  "1can-2h-2 RH4 C#5 gold=wrong_pitch pred=wrong_pitch+late",
-  "1can-2h-2 LH45 F#2 gold=correct pred=correct+late",
-  "1can-2h-2 LH46 C#3 gold=correct pred=wrong_pitch",
+  "1can-2h-2 RH4 C#5 gold=wrong_pitch pred=correct+held_long|late",
+  "1can-2h-2 LH45 F#2 gold=correct pred=correct+held_long|late",
   "1can-2h-2 RH6 A4 gold=correct pred=missed",
-  "1cmajor-2h-up RH1 C4 gold=correct pred=missed",
-  "1cmajor-2h-up RH2 D4 gold=correct pred=missed",
-  "1cmajor-2h-up RH4 F4 gold=correct pred=missed",
-  "1cmajor-2h-up RH6 A4 gold=correct pred=missed",
   "2can-1h-1 LH41 B2 gold=correct+held_long pred=correct",
   "2can-1h-1 LH53 D2 gold=correct+late pred=correct",
-  "2can-2h-1 RH2 E5 gold=correct pred=missed",
+  "2can-1h-1 LH57 G2 gold=correct pred=correct+late",
   "2can-2h-1 RH4 C#5 gold=correct pred=wrong_pitch",
+  "2can-2h-1 LH51 G3 gold=correct pred=wrong_pitch",
+  "2can-2h-1 LH52 B3 gold=correct pred=wrong_pitch",
+  "2can-2h-1 LH53 D2 gold=wrong_pitch pred=correct",
   "2can-2h-1 RH7 B4 gold=correct pred=correct+late",
   "2can-2h-1 LH57 G2 gold=correct pred=correct+late",
+  "2can-1h-2 LH17 G2 gold=correct pred=correct+late",
   "2can-1h-2 LH29 A2 gold=correct+held_long pred=correct",
   "2can-1h-2 LH42 F#3 gold=correct+held_long pred=correct",
   "2can-1h-2 LH45 F#2 gold=correct pred=correct+late",
@@ -396,18 +393,13 @@
   "2can-2h-2 LH32 C#4 gold=missed pred=correct",
   "2can-2h-2 RH1 F#5 gold=correct pred=correct+late",
   "2can-2h-2 LH33 D3 gold=correct pred=correct+late",
-  "2can-2h-2 RH2 E5 gold=correct pred=missed",
   "2can-2h-2 RH3 D5 gold=correct pred=correct+late",
   "2can-2h-2 LH41 B2 gold=correct pred=correct+late",
   "2can-2h-2 LH53 D2 gold=correct pred=wrong_pitch+held_long",
   "2can-2h-2 RH7 B4 gold=correct pred=correct+late",
   "2can-2h-2 LH57 G2 gold=correct pred=correct+late",
   "2can-2h-2 LH63 A3 gold=correct pred=wrong_pitch",
-  "2cmajor-2h-up RH1 C4 gold=correct pred=missed",
-  "2cmajor-2h-up RH2 D4 gold=correct pred=missed",
-  "2emajor-2h-up RH2 F#4 gold=correct pred=missed",
-  "2emajor-2h-up RH4 A4 gold=correct pred=missed",
-  "2can-2h-1 extras tp/fp/fn=0/1/0"
+  "2can-2h-2 extras tp/fp/fn=0/1/0"
  ],
  "onset_only": {
   "clean": 12,
@@ -1316,5 +1308,7 @@
    "located": 1.0
   }
  },
- "seconds": 47.7
+ "seconds": 48.2,
+ "crashes": 0,
+ "crash_examples": []
 }

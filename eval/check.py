@@ -48,18 +48,23 @@ def _ready_takes(pieces):
             yield t, spec, labels, model_audio(t.audio)
 
 
+CRASHES: list[str] = []          # a crashed prediction scores as "all correct": never let that pass silently
+
+
 def _predict(adapter, bundle, spec, overrides=None):
     try:
         pred = adapter.predict_bundle(bundle, spec, overrides)
         pred.validate([n.id for n in spec.notes()])
         return pred
-    except Exception:
+    except Exception as e:
+        CRASHES.append(f"{type(e).__name__}: {e}")
         return None
 
 
 def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
     pieces = all_pieces()
     t0 = time.time()
+    CRASHES.clear()
     real, clean_mono = [], []
     for t, spec, labels, audio in _ready_takes(pieces):
         bundle = load_bundle(audio, t.piece)
@@ -117,6 +122,8 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
                 b["located"] = located[k] / len(evs)
             board["synth"][k] = b
     board["seconds"] = round(time.time() - t0, 1)
+    board["crashes"] = len(CRASHES)
+    board["crash_examples"] = sorted(set(CRASHES))[:5]
     return board
 
 
@@ -147,7 +154,10 @@ def _f(x) -> str:
 
 
 def render(board: dict) -> str:
-    L = [f"SCOREBOARD  model={board['model']}  ({board['seconds']}s)", "",
+    L = [f"SCOREBOARD  model={board['model']}  ({board['seconds']}s)"]
+    if board.get("crashes"):
+        L += [f"!!! {board['crashes']} PREDICTIONS CRASHED - the numbers below are not valid: {board['crash_examples']}"]
+    L += ["",
          "REAL TAKES        takes notes | goal F1 | strict P     R    F1 | wrong missed extra  held  late | clean"]
     for g, b in board["real"].items():
         if not b.get("n_takes"):
@@ -188,6 +198,8 @@ def diff(new: dict, old: dict, tol: float = 1e-9) -> tuple[list[str], list[str]]
         changes.append(f"  {'WORSE ' if worse else 'better'} {k:<40} {x:.3f} -> {y:.3f}")
         if worse and k in GUARDED:
             regressions.append(k)
+    if new.get("crashes"):
+        regressions.append(f"{new['crashes']} crashed predictions")
     return changes, regressions
 
 

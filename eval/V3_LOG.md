@@ -323,3 +323,91 @@ REAL-TAKE DISAGREEMENTS (45)
   2emajor-2h-up RH4 A4 gold=correct pred=missed
   2can-2h-1 extras tp/fp/fn=0/1/0
 ```
+
+### Phase 6 decisions (two voices)
+
+- The front end's overtone subtraction removes a right-hand note that sits on a harmonic of the
+  left hand (octave scales, Ode melody C4/G4 over C3/G3, Canon chord tones). Measured cues for
+  "is the octave doubled?" (even-vs-odd partial balance, h2-h1, h2-h3) overlap too much between
+  single and doubled notes to decide per note, so v3 does not try to.
+- Instead, for score pitches that sit on a harmonic of another score pitch, a jump of the
+  fundamental in the raw spectrum (>= 6 dB, standing >= 10 dB above its neighbours) counts as a
+  strike of that pitch when the score expects it there. 6 dB rather than 10 dB so that a soft
+  re-strike of a still-ringing note over a held bass is seen (`odeharm` RH10).
+- **Known blind spot, by design:** when the left hand strikes a note and the score also expects its
+  octave/fifth/third in the right hand at the same moment, a *missing* right-hand note cannot be
+  told apart from the bass's own overtone and is reported correct. A *wrong* right-hand note is
+  still caught. False alarms on correct playing were judged worse than this blind spot.
+- A bug in this phase made predictions crash; the scoreboard counted crashes as "all correct" and
+  showed 17/17 clean. `check` now reports crashed predictions and refuses to accept a board with any.
+- Timing flags on real takes moved (late: 4 hits, 3 unlabelled gaps flagged, 1 miss). The three
+  flagged gaps measure 1.6x-2.4x; they are kept as real hesitations the labels do not mark.
+
+## 2026-11-10 18:03  Phase 6: two-voice (raw-spectrum strikes for score pitches on a bass harmonic)
+
+```
+SCOREBOARD  model=v3  (48.2s)
+
+REAL TAKES        takes notes | goal F1 | strict P     R    F1 | wrong missed extra  held  late | clean
+  all                32   814 |   0.74  |       0.81  0.81  0.81 |  0.87  0.61  0.00  0.00  0.33 | 17/17
+  mono               22   477 |   0.93  |       1.00  1.00  1.00 |  1.00  1.00   -    0.00  0.67 | 12/12
+  two_hand           10   337 |   0.53  |       0.60  0.60  0.60 |  0.65  0.53  0.00  0.00  0.00 | 5/5
+  mono_p1            10   227 |   0.98  |       1.00  1.00  1.00 |  1.00  1.00   -    0.00  1.00 | 6/6
+  mono_p2            10   234 |   0.82  |       1.00  1.00  1.00 |  1.00  1.00   -    0.00  0.60 | 5/5
+  goal counts (mono): strict tp/fp/fn=28/0/0  held_long tp/fp/fn=0/1/3  late=4/3/1  extra=0/0/0
+
+ONSET-ONLY (pitch term off): 12/12 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  held R  late R | false flags/case
+  clean                          12 |  1.00 |        -     -     -   |    -       -       -   | 0.00
+  sub                           552 |  0.99 |       0.99  0.99  0.99 |    -       -       -   | 0.01
+  shift                          66 |  0.88 |       0.96  0.89  0.92 |    -       -       -   | 0.14
+  miss_ins_step                 126 |  1.00 |       1.00  1.00  1.00 |    -       -       -   | 0.00
+  miss_ins_repeat               126 |  1.00 |       1.00  1.00  1.00 |    -       -       -   | 0.00
+  miss_del                      114 |  1.00 |       1.00  1.00  1.00 |    -       -       -   | 0.00
+  extra_score                   114 |  0.98 |       0.98  0.98  0.98 |   1.00     -       -   | 0.02
+  extra_dup                     114 |  0.97 |       0.00   -    0.00 |   0.97     -       -   | 0.03
+  hold                          126 |  0.94 |        -     -     -   |    -      0.94     -   | 0.06
+  gap                           126 |  1.00 |        -     -     -   |    -       -      1.00 | 0.00
+  stop_early                     24 |  1.00 |       1.00  1.00  1.00 |    -       -       -   | 0.00
+  restart                       156 |  1.00 |        -     -     -   |    -       -       -   | 0.00 | restart located  1.00
+
+REAL-TAKE DISAGREEMENTS (37)
+  1can-1h-2 LH37 A2 gold=correct+late pred=correct+held_long|late
+  1can-2h-2 LH36 F#4 gold=correct pred=correct+held_long
+  1can-2h-2 RH3 D5 gold=correct pred=correct+late
+  1can-2h-2 LH41 B2 gold=correct pred=correct+late
+  1can-2h-2 RH4 C#5 gold=wrong_pitch pred=correct+held_long|late
+  1can-2h-2 LH45 F#2 gold=correct pred=correct+held_long|late
+  1can-2h-2 RH6 A4 gold=correct pred=missed
+  2can-1h-1 LH41 B2 gold=correct+held_long pred=correct
+  2can-1h-1 LH53 D2 gold=correct+late pred=correct
+  2can-1h-1 LH57 G2 gold=correct pred=correct+late
+  2can-2h-1 RH4 C#5 gold=correct pred=wrong_pitch
+  2can-2h-1 LH51 G3 gold=correct pred=wrong_pitch
+  2can-2h-1 LH52 B3 gold=correct pred=wrong_pitch
+  2can-2h-1 LH53 D2 gold=wrong_pitch pred=correct
+  2can-2h-1 RH7 B4 gold=correct pred=correct+late
+  2can-2h-1 LH57 G2 gold=correct pred=correct+late
+  2can-1h-2 LH17 G2 gold=correct pred=correct+late
+  2can-1h-2 LH29 A2 gold=correct+held_long pred=correct
+  2can-1h-2 LH42 F#3 gold=correct+held_long pred=correct
+  2can-1h-2 LH45 F#2 gold=correct pred=correct+late
+  2can-2h-2 LH21 D2 gold=wrong_pitch+held_long pred=missed
+  2can-2h-2 LH22 A2 gold=wrong_pitch pred=missed
+  2can-2h-2 LH23 D3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH24 F#3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH29 A2 gold=missed pred=correct+held_long
+  2can-2h-2 LH30 E3 gold=missed pred=correct
+  2can-2h-2 LH31 A3 gold=missed pred=correct+held_long
+  2can-2h-2 LH32 C#4 gold=missed pred=correct
+  2can-2h-2 RH1 F#5 gold=correct pred=correct+late
+  2can-2h-2 LH33 D3 gold=correct pred=correct+late
+  2can-2h-2 RH3 D5 gold=correct pred=correct+late
+  2can-2h-2 LH41 B2 gold=correct pred=correct+late
+  2can-2h-2 LH53 D2 gold=correct pred=wrong_pitch+held_long
+  2can-2h-2 RH7 B4 gold=correct pred=correct+late
+  2can-2h-2 LH57 G2 gold=correct pred=correct+late
+  2can-2h-2 LH63 A3 gold=correct pred=wrong_pitch
+  2can-2h-2 extras tp/fp/fn=0/1/0
+```
