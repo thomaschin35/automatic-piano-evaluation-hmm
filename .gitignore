@@ -13,3 +13,6 @@ recordings/
 # eval harness outputs and phone audio
 eval/runs/
 *.m4a
+
+# feature cache and accepted-scoreboard scratch
+eval/cache/

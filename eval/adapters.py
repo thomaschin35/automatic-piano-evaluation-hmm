@@ -45,10 +45,29 @@ def segments_to_note_predictions(results, segments, spec: PieceSpec,
 class V2Adapter:
     name = "v2"
     capabilities = frozenset({"wrong_pitch", "missed"})
+    onset_only = {"pitch_weight": 0.0}       # overrides for the "can onsets alone align?" check
 
     def config(self) -> dict:
         from stft_hmm_v2 import TimingConfig
         return asdict(TimingConfig())
+
+    def analyze(self, bundle, overrides: dict | None = None):
+        import dataclasses
+        import stft_hmm_v2 as m
+        cfg = dataclasses.replace(m.TimingConfig(), **(overrides or {}))
+        alignment, _ = m.create_recording_alignment(bundle, cfg)
+        states, A = m.build_graph(alignment, cfg)
+        path = m.viterbi(m.log_emissions(states, bundle, cfg, alignment), A)
+        iv = m.path_to_intervals(path, states, len(alignment), bundle.audio.num_frames)
+        return m.grade(iv, alignment, bundle, cfg), alignment
+
+    def predict_bundle(self, bundle, piece: PieceSpec, overrides: dict | None = None) -> TakePrediction:
+        """Prediction from precomputed features (bundle.score must already be `piece`)."""
+        results, _ = self.analyze(bundle, overrides)
+        notes = segments_to_note_predictions(
+            results, bundle.segments, piece,
+            bundle.audio.seconds_per_frame, bundle.audio.trim_offset_seconds)
+        return TakePrediction(notes=notes, capabilities=self.capabilities)
 
     def predict(self, audio_path: str, piece: PieceSpec, out_dir: Path) -> TakePrediction:
         import stft_hmm_v2

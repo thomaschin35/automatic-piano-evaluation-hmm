@@ -53,6 +53,8 @@ class TakePrediction:
     extras: list[ExtraNotePrediction] = field(default_factory=list)
     capabilities: frozenset[str] = frozenset(ERROR_TYPES)
     artifacts: dict[str, str] = field(default_factory=dict)
+    # places where the player went back: (last note id played before the jump, note id resumed at)
+    restarts: list[tuple[str, str]] = field(default_factory=list)
 
     def to_json(self) -> dict:
         return {
@@ -60,6 +62,7 @@ class TakePrediction:
             "extras": [asdict(e) for e in self.extras],
             "capabilities": sorted(self.capabilities),
             "artifacts": self.artifacts,
+            "restarts": [list(r) for r in self.restarts],
         }
 
     def validate(self, note_ids: list[str]) -> None:

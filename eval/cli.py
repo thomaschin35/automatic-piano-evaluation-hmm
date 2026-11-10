@@ -15,6 +15,7 @@ cli.py  --  python -m eval.cli <command>
   run [--model v2] [--split dev|test|all] [--piece P] [--take T]
   plots <run>                  overview, confusion and note-map charts for a run
   compare <runA> <runB>        metric deltas and per-note flips between two runs
+  check [--model M] [--accept] scoreboard on real takes + synthetic errors, vs the accepted one
 """
 from __future__ import annotations
 import argparse
@@ -395,6 +396,42 @@ def cmd_run(args) -> int:
     return 0
 
 
+def cmd_check(args) -> int:
+    """Unit tests + real takes + synthetic errors + onset-only test, compared with the accepted board."""
+    from eval import check
+    from eval.adapters import get_adapter
+    if not args.no_tests:
+        rc = subprocess.run([sys.executable, "-m", "unittest", "discover", "eval/tests"],
+                            cwd=REPO_DIR, capture_output=True, text=True)
+        tail = rc.stderr.strip().splitlines()[-1] if rc.stderr.strip() else ""
+        print(f"UNIT TESTS: {tail}")
+        if rc.returncode:
+            print(rc.stderr)
+            return 1
+    board = check.build(get_adapter(args.model), with_synth=not args.no_synth)
+    print(check.render(board))
+    ref = check.load(args.against or args.model)
+    regressions = []
+    if ref:
+        changes, regressions = check.diff(board, ref)
+        print(f"\nCHANGE vs accepted '{ref['model']}' scoreboard: {len(changes)} metrics moved")
+        print("\n".join(changes))
+        if regressions:
+            print(f"REGRESSION on guarded metrics: {', '.join(regressions)}")
+    else:
+        print("\n(no accepted scoreboard to compare with)")
+    if args.accept:
+        if regressions and not args.force:
+            print("Not accepted: guarded metrics regressed (use --force to accept anyway).")
+            return 2
+        print(f"Accepted -> {check.save(board).relative_to(REPO_DIR)}")
+        if args.log:
+            log = REPO_DIR / "eval" / "V3_LOG.md"
+            with open(log, "a") as f:
+                f.write(f"\n## {time.strftime('%Y-%m-%d %H:%M')}  {args.log}\n\n```\n{check.render(board)}\n```\n")
+    return 2 if regressions else 0
+
+
 def cmd_plots(args) -> int:
     import matplotlib
     matplotlib.use("Agg")
@@ -474,6 +511,16 @@ def main(argv=None) -> int:
     p.add_argument("--piece", nargs="+")
     p.add_argument("--take", nargs="+")
     p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("check", help="scoreboard: real takes, synthetic errors, onset-only test")
+    p.add_argument("--model", default="v3")
+    p.add_argument("--against", help="compare with another model's accepted scoreboard")
+    p.add_argument("--accept", action="store_true", help="store this scoreboard as the accepted one")
+    p.add_argument("--force", action="store_true", help="accept even if guarded metrics regressed")
+    p.add_argument("--log", help="with --accept: append the scoreboard to eval/V3_LOG.md under this title")
+    p.add_argument("--no-tests", action="store_true")
+    p.add_argument("--no-synth", action="store_true")
+    p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("plots", help="draw charts for a run (also done automatically by run)")
     p.add_argument("run")

@@ -10,13 +10,16 @@ false alarms on perfect takes and recording-level pass/fail accuracy.
 """
 from __future__ import annotations
 from collections import Counter
+import dataclasses
 from dataclasses import dataclass, field
 
 from eval.contract import ERROR_TYPES, EXTRA, FLAGS, NOTE_ERRORS, NOTE_LABELS, TakePrediction
 from eval.labels import TakeLabels
 from eval.pieces import PieceSpec
 
-COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined",)
+# strict: a note error counts only when the predicted label equals the gold label (a wrong label
+# is both a false alarm and a miss). goal: strict note labels + held_long, the project target.
+COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "goal")
 
 
 @dataclass
@@ -62,6 +65,30 @@ def _match_extras(gold: list, pred: list, spec_ids: dict) -> int:
     return hits
 
 
+def align_missed_in_runs(spec: PieceSpec, gold_labels: dict[str, str], pred_labels: dict[str, str]) -> dict[str, str]:
+    """Which note of a run of identical consecutive pitches was left out cannot be heard (E E -> E).
+    If gold and prediction disagree only on the position of a 'missed' inside such a run, move the
+    predicted 'missed' onto the gold position."""
+    out = dict(pred_labels)
+    by_hand: dict[str, list] = {}
+    for n in spec.notes():
+        by_hand.setdefault(n.hand, []).append(n)
+    for notes in by_hand.values():
+        notes.sort(key=lambda n: n.index)
+        i = 0
+        while i < len(notes):
+            j = i
+            while j + 1 < len(notes) and notes[j + 1].pitch == notes[i].pitch:
+                j += 1
+            ids = [n.id for n in notes[i:j + 1]]
+            want = [k for k in ids if gold_labels[k] == "missed" and out.get(k) == "correct"]
+            have = [k for k in ids if gold_labels[k] == "correct" and out.get(k) == "missed"]
+            for a, b in zip(want, have):
+                out[a], out[b] = "missed", "correct"
+            i = j + 1
+    return out
+
+
 def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
                   pred: TakePrediction | None) -> TakeEval:
     """pred=None means the model crashed: every note counts as predicted correct."""
@@ -69,6 +96,12 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
     c = ev.counts
     spec_ids = spec.note_by_id()
     gold_labels = gold.note_labels(spec)
+    if pred is not None:
+        moved = align_missed_in_runs(spec, gold_labels, {n.note_id: n.label for n in pred.notes})
+        pred = dataclasses.replace(pred, notes=[
+            n if moved[n.note_id] == n.label else dataclasses.replace(
+                n, label=moved[n.note_id], played_pitch=None if moved[n.note_id] == "missed" else n.played_pitch)
+            for n in pred.notes])
     gold_played = gold.played()
     gold_flags = gold.flags()
     pred_by_id = {n.note_id: n for n in pred.notes} if pred else {}
@@ -94,6 +127,11 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
         tally("combined", g != "correct", p != "correct")
         for t in NOTE_ERRORS:
             tally(t, g == t, p == t)
+        for key in ("strict", "goal"):
+            c[f"{key}.tp"] += int(g != "correct" and p == g)
+            c[f"{key}.fp"] += int(p != "correct" and p != g)
+            c[f"{key}.fn"] += int(g != "correct" and p != g)
+        tally("goal", "held_long" in gflags, "held_long" in pflags)
         for fl in FLAGS:
             tally(fl, fl in gflags, fl in pflags)
             tally("combined", fl in gflags, fl in pflags)
@@ -165,7 +203,7 @@ def aggregate(evals: list[TakeEval]) -> dict:
 
 def _from_block(take_id: str, piece: str, b: dict) -> TakeEval:
     """Rebuild a TakeEval's counters from its saved single-take block (metrics.json by_take)."""
-    counts = Counter({f"{k}.{x}": b[k][x] for k in COUNT_KEYS for x in ("tp", "fp", "fn")})
+    counts = Counter({f"{k}.{x}": b[k][x] for k in COUNT_KEYS if k in b for x in ("tp", "fp", "fn")})
     conf = Counter({(g, p): n for g, row in b["confusion"].items() for p, n in row.items()})
     played_total = b["played_pitch_n"]
     return TakeEval(
