@@ -363,12 +363,15 @@ def name_substitutes(
     onset_threshold: float,
     attack_fraction: float,
     presence_threshold: float,
+    previous_detected: tuple[int, ...] | None = None,
 ) -> tuple[tuple[int, int], ...]:
     """
     Pair each missing expected pitch with the pitch the player struck instead, or leave it
     unpaired (skipped). A substitute must be freshly struck near the segment start, so the
     previous note still ringing never counts; the exception is a held score note continuing
     from the previous segment, which keeps that segment's substitute while it still sounds.
+    When `previous_detected` is given, a pitch that is present and was absent in the previous
+    segment also counts, so a legato substitution with no hammer onset is still named.
     Partials of chosen/detected pitches and sub-octave ghosts beneath them are excluded.
     """
     missing = [p for p in segment.expected_pitches if p not in detected]
@@ -399,9 +402,16 @@ def name_substitutes(
                 continue
             onset_peak = float(np.max(bundle.candidate_onset_scores[q][w0:w1]))
             pres_q = presence(q)
-            if onset_peak < onset_threshold or pres_q < presence_threshold:
+            struck = onset_peak >= onset_threshold and pres_q >= presence_threshold
+            legato = (
+                previous_detected is not None
+                and not struck
+                and pres_q >= presence_threshold
+                and q not in previous_detected
+            )
+            if not struck and not legato:
                 continue
-            candidates.append((q, onset_peak, pres_q))
+            candidates.append((q, onset_peak if struck else pres_q, pres_q))
 
         # Low -> high so a chosen low note explains its own partials higher up
         kept: list[tuple[int, float, float]] = []
@@ -501,6 +511,11 @@ def print_diagnostic_report(results: list[SegmentResult], seconds_per_frame: flo
 
         exp_names = [midi_to_note_name(p) for p in r.expected_pitches]
         obs_names = [midi_to_note_name(p) for p in r.observed_pitches]
+        if r.end_frame < r.start_frame:
+            print(f"Segment {r.segment_index:2d} [not aligned]: "
+                  f"Expected={exp_names} Observed={obs_names} -> Status: {status}")
+            continue
+
         t_start = r.start_frame * seconds_per_frame
         t_end = (r.end_frame + 1) * seconds_per_frame
         dur = t_end - t_start
@@ -540,6 +555,8 @@ def save_alignment_plot(
 
     # 2. Inferred Lane (Top)
     for r in results:
+        if r.end_frame < r.start_frame:
+            continue
         s_sec = r.start_frame * seconds_per_frame
         w_sec = (r.end_frame - r.start_frame + 1) * seconds_per_frame
 

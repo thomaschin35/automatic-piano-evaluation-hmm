@@ -17,6 +17,8 @@ from eval.labels import TakeLabels
 from eval.pieces import PieceSpec
 
 COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined",)
+MONOPHONIC_PIECES = ("c_major_rh", "e_major_rh", "e_major_rh_down", "ode_melody")
+MONO_CLASSES = ("wrong_pitch", "missed", "held_long")
 
 
 @dataclass
@@ -184,6 +186,29 @@ def subset(metrics: dict, rows: list[dict], pieces: set[str]) -> dict:
     evals = [_from_block(t, piece_of[t], b) for t, b in metrics["by_take"].items()
              if piece_of.get(t) in pieces]
     return summarize(evals)
+
+
+def monophonic_summary(metrics: dict, rows: list[dict]) -> dict:
+    """Per-class F1 on the monophonic pieces, and their unweighted mean.
+
+    A class with no gold and no predicted positive is left out of the mean.
+    """
+    block = subset(metrics, rows, set(MONOPHONIC_PIECES))
+    f1s = []
+    detail = {}
+    for key in MONO_CLASSES:
+        stats = block["overall"][key]
+        detail[key] = stats["f1"]
+        support = stats["tp"] + stats["fp"] + stats["fn"]
+        if support > 0 and not stats.get("unsupported"):
+            f1s.append(stats["f1"])
+    return {
+        "pieces": list(MONOPHONIC_PIECES),
+        "overall": block["overall"],
+        "by_piece": block["by_piece"],
+        "class_f1": detail,
+        "mean_class_f1": (sum(f1s) / len(f1s)) if f1s else None,
+    }
 
 
 def summarize(evals: list[TakeEval]) -> dict:

@@ -109,6 +109,14 @@ def print_summary(metrics: dict, title: str = "") -> None:
     if o["played_pitch_n"]:
         print(f"Played-pitch accuracy on detected wrong notes: {_fmt(o['played_pitch_accuracy'], pct=True)}% "
               f"(n={o['played_pitch_n']})")
+    mono = metrics.get("monophonic")
+    if mono:
+        names = ", ".join(mono["pieces"])
+        print(f"Monophonic ({names})")
+        for key in ("wrong_pitch", "missed", "held_long"):
+            print(f"  {key:<12} F1 {_fmt(mono['class_f1'][key])}")
+        print(f"  {'mean class':<12} F1 {_fmt(mono['mean_class_f1'])}")
+        print("-" * len(header))
     if o["failed_takes"]:
         print(f"FAILED takes (counted as all-correct predictions): {', '.join(o['failed_takes'])}")
     conf = o["confusion"]

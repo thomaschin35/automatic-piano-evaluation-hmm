@@ -322,7 +322,7 @@ def cmd_validate(args) -> int:
 # ---------------------------------------------------------------- run
 def cmd_run(args) -> int:
     from eval.adapters import get_adapter
-    from eval.metrics import evaluate_take, summarize
+    from eval.metrics import evaluate_take, monophonic_summary, summarize
     from eval.runs import new_run_dir, print_summary, print_take_errors, write_json, write_rows
 
     adapter = get_adapter(args.model)
@@ -370,6 +370,7 @@ def cmd_run(args) -> int:
 
     metrics = summarize(evals)
     rows = [r for ev in evals for r in ev.rows]
+    metrics["monophonic"] = monophonic_summary(metrics, rows)
     write_json(run_dir / "meta.json", {
         "model": adapter.name, "model_config": adapter.config(), "git": git,
         "split": args.split, "argv": sys.argv[1:],
