@@ -59,6 +59,10 @@ class V3Config:
     timing_cap: float = 4.0
     chord_missing_cost: float = 2.0   # per expected pitch absent from a matched event (two voices)
     stop_cost: float = 6.0            # at most this much for the notes left unplayed at the end
+    # --- timing verdicts
+    slow_ratio: float = 1.5           # a gap this many times its written length is a timing error:
+    sounding_level: float = 0.5       #   note still sounding (>= this x its level) up to the next strike
+    sounding_frames: int = 5          #   over these frames before it -> "held too long"; silent -> next note "late"
     # --- reporting
     smudge_ratio: float = 0.90        # a stray key struck this strongly next to the right one: not a clean note
     extra_report_salience: float = 0.40
@@ -341,6 +345,7 @@ class PitchVerdict:
     played: int | None = None
     frame: int | None = None
     corrected: bool = False        # a wrong key first, then the right one
+    flags: set = field(default_factory=set)      # held_long | late
 
 
 @dataclass
@@ -376,7 +381,41 @@ def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg
     return out, [q for q, s in free if q not in used]
 
 
-def report(an: Analysis, cfg: V3Config | None = None) -> Report:
+def still_sounding(bundle, pitch: int, onset: int, until: int, cfg: V3Config) -> bool:
+    """Is `pitch`, struck at frame `onset`, still sounding just before frame `until`?"""
+    pres = bundle.candidate_scores[pitch]
+    level = float(np.median(pres[onset + 2:onset + 8])) if onset + 2 < len(pres) else 0.0
+    lo, hi = max(onset + 2, until - 1 - cfg.sounding_frames), until - 1
+    if hi <= lo or level <= 0.0:
+        return True
+    return float(np.mean(pres[lo:hi] >= cfg.sounding_level * level)) >= 0.5
+
+
+def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
+    """A gap between two consecutive score notes that lasts >= slow_ratio x its written length:
+    if the first note rang on through the gap it was held too long, otherwise the second came late."""
+    spf = an.seconds_per_frame
+    for a, c in zip(an.matches, an.matches[1:]):
+        if c.position != a.position + 1 or c.event != a.event + 1:
+            continue                                   # skips, restarts and corrections explain their own time
+        va, vc = rep.verdicts[a.position], rep.verdicts[c.position]
+        if any(v.corrected for v in vc):
+            continue
+        fa, fc = an.events[a.event].frame, an.events[c.event].frame
+        beats = an.positions[c.position].beat - an.positions[a.position].beat
+        ratio = (fc - fa) * spf / (beats * an.seconds_per_beat[c.event])
+        if ratio < cfg.slow_ratio:
+            continue
+        sounding = [v for v in va if v.played is not None and still_sounding(bundle, v.played, fa, fc, cfg)]
+        if sounding:
+            for v in sounding:
+                v.flags.add("held_long")
+        else:
+            for v in vc:
+                v.flags.add("late")
+
+
+def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     """Turn the alignment into verdicts.
 
     An unmatched event is one of three things: a re-strike of the note just played or a double
@@ -415,7 +454,10 @@ def report(an: Analysis, cfg: V3Config | None = None) -> Report:
     for pos in an.positions:
         if pos.index not in verdicts:
             verdicts[pos.index] = [PitchVerdict(p, "missed") for p in pos.pitches]
-    return Report(verdicts, extras, restarts, visits)
+    rep = Report(verdicts, extras, restarts, visits)
+    if bundle is not None:
+        timing_flags(an, rep, bundle, cfg)
+    return rep
 
 
 def print_report(an: Analysis, rep: Report) -> None:
@@ -430,6 +472,7 @@ def print_report(an: Analysis, rep: Report) -> None:
                     "wrong_pitch": f"WRONG NOTE (played {midi_to_note_name(v.played or 0)}"
                                    f"{', then corrected' if v.corrected else ''})"}[v.label]
             again = f"  [played {len(rep.visits[pos.index])}x]" if len(rep.visits.get(pos.index, [])) > 1 else ""
+            again += "".join({"held_long": "  HELD TOO LONG", "late": "  LATE"}[f] for f in sorted(v.flags))
             print(f"  note {pos.index + 1:3d}  beat {pos.beat:5.2f}  {midi_to_note_name(v.pitch):<4} {when}  {what}{again}")
     for after, pitch, frame in rep.extras:
         where = f"after note {after + 1}" if after is not None else "before the first note"
@@ -443,7 +486,7 @@ def run_pipeline(audio_path, model_name):
     cfg = V3Config()
     bundle = stft_features.run_stage1_and_stage2(audio_path, model_name)
     an = analyze(bundle, cfg)
-    rep = report(an, cfg)
+    rep = report(an, cfg, bundle)
     print_report(an, rep)
     return bundle, an, rep
 

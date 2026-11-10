@@ -86,7 +86,7 @@ class V2Adapter:
 
 class V3Adapter:
     name = "v3"
-    capabilities = frozenset({"wrong_pitch", "missed", "extra"})
+    capabilities = frozenset({"wrong_pitch", "missed", "extra", "held_long", "late"})
     onset_only = {"sub_cost": 0.0}           # pitch-blind alignment: any event may stand for any note
 
     def config(self) -> dict:
@@ -98,7 +98,7 @@ class V3Adapter:
         import stft_hmm_v3 as m
         cfg = dataclasses.replace(m.V3Config(), **(overrides or {}))
         an = m.analyze(bundle, cfg)
-        rep = m.report(an, cfg)
+        rep = m.report(an, cfg, bundle)
         return report_to_prediction(an, rep, piece, bundle.audio.trim_offset_seconds, self.capabilities)
 
     def predict(self, audio_path: str, piece: PieceSpec, out_dir: Path) -> TakePrediction:
@@ -108,7 +108,7 @@ class V3Adapter:
         bundle = load_bundle(audio_path, piece.name)
         cfg = m.V3Config()
         an = m.analyze(bundle, cfg)
-        rep = m.report(an, cfg)
+        rep = m.report(an, cfg, bundle)
         log = io.StringIO()
         with contextlib.redirect_stdout(log):
             m.print_report(an, rep)

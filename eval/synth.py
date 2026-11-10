@@ -9,7 +9,7 @@ that note; only a re-strike of a neighbouring note is "extra".
   * wrong score  - keep the audio, change the score it is graded against
                    (sub, shift, miss_ins_step, miss_ins_repeat, extra_score);
   * spliced time - keep the score, cut / repeat / reorder the feature frames at note boundaries
-                   (miss_del, extra_dup, hesitate, stop_early, restart).
+                   (miss_del, extra_dup, hold, gap, stop_early, restart).
 Note boundaries come from `reference_onsets`, a model-independent dynamic programme over the
 per-pitch onset scores of the clean take.
 """
@@ -25,7 +25,7 @@ from eval.pieces import PieceSpec
 
 MONO_PIECES = ("c_major_rh", "e_major_rh", "e_major_rh_down", "ode_melody", "canon_lh")
 KINDS = ("clean", "sub", "shift", "miss_ins_step", "miss_ins_repeat", "miss_del",
-         "extra_score", "extra_dup", "hesitate", "stop_early", "restart")
+         "extra_score", "extra_dup", "hold", "gap", "stop_early", "restart")
 PRE = 3            # frames before an onset peak that belong to the new note (attack rise)
 
 
@@ -151,15 +151,22 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
             yield _case("extra_dup", take_id, splice(bundle, frames), spec,
                         [GoldError("extra", after=nid(i), played=P[i])], note=i)
 
-    if "hesitate" in kinds:                        # previous note keeps ringing before note i
-        pause = int(round(1.5 * ioi))
+    # a gap of twice the written length before note i ...
+    pause = int(round(1.0 * ioi))
+    for kind in ("hold", "gap"):
+        if kind not in kinds:
+            continue
         for i in range(1, n):
-            tail = np.arange(max(cut[i - 1] + PRE + 2, cut[i] - 3), cut[i])
-            if tail.size == 0:
+            if kind == "hold":                     # ... filled by the previous note ringing on: held too long
+                src = np.arange(max(cut[i - 1] + PRE + 2, cut[i] - 3), cut[i])
+                gold = [GoldError("held_long", note_id=nid(i - 1))]
+            else:                                  # ... silent: the next note comes late
+                src = np.array([-1])                # silent frames
+                gold = [GoldError("late", note_id=nid(i))]
+            if src.size == 0:
                 continue
-            fill = np.resize(tail, pause)
-            frames = np.concatenate([np.arange(0, cut[i]), fill, np.arange(cut[i], T)])
-            yield _case("hesitate", take_id, splice(bundle, frames), spec, [], note=i, pause_frames=pause)
+            frames = np.concatenate([np.arange(0, cut[i]), np.resize(src, pause), np.arange(cut[i], T)])
+            yield _case(kind, take_id, splice(bundle, frames), spec, gold, note=i, pause_frames=pause)
 
     if "stop_early" in kinds:                      # player stops; the rest is never played
         for j in sorted({n // 2, n - 2}):

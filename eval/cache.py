@@ -65,16 +65,26 @@ def rescore(bundle, score: ScoreModel):
 
 
 def splice(bundle, frames):
-    """Copy of `bundle` whose time axis is `frames` (an index array into the original frames)."""
+    """Copy of `bundle` whose time axis is `frames` (an index array into the original frames).
+    An index of -1 inserts a silent frame."""
     idx = np.asarray(frames, dtype=int)
+    silent = idx < 0
+    idx = np.where(silent, 0, idx)
+
+    def take(v, fill=0.0):
+        out = v[..., idx].copy() if v.ndim == 1 else v[:, idx].copy()
+        out[..., silent] = fill
+        return out
+
     b = copy.copy(bundle)
-    b.audio = dataclasses.replace(bundle.audio, stft_db=bundle.audio.stft_db[:, idx])
-    b.candidate_scores = {p: v[idx] for p, v in bundle.candidate_scores.items()}
-    b.candidate_onset_scores = {p: v[idx] for p, v in bundle.candidate_onset_scores.items()}
+    b.audio = dataclasses.replace(bundle.audio, stft_db=take(bundle.audio.stft_db, -90.0))
+    b.candidate_scores = {p: take(v) for p, v in bundle.candidate_scores.items()}
+    b.candidate_onset_scores = {p: take(v) for p, v in bundle.candidate_onset_scores.items()}
     b.note_scores = {p: b.candidate_scores[p] for p in bundle.note_scores}
     b.note_onset_scores = {p: b.candidate_onset_scores[p] for p in bundle.note_onset_scores}
-    b.unexpected_pitch_scores = bundle.unexpected_pitch_scores[idx]
-    b.broadband_onset = bundle.broadband_onset[idx]
-    b.frame_energy = bundle.frame_energy[idx]
-    b.observations = bundle.observations[idx]
+    b.unexpected_pitch_scores = take(bundle.unexpected_pitch_scores)
+    b.broadband_onset = take(bundle.broadband_onset)
+    b.frame_energy = take(bundle.frame_energy)
+    b.observations = bundle.observations[idx].copy()
+    b.observations[silent] = 0.0
     return b

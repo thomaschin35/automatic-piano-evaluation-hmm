@@ -104,7 +104,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
                 per_kind[case.kind].append(ev)
                 c = ev.counts
                 exact[case.kind] += int(not ev.failed and sum(
-                    c[f"{k}.{x}"] for k in ("strict", "extra") for x in ("fp", "fn")) == 0)
+                    c[f"{k}.{x}"] for k in ("strict", "extra", "held_long", "late") for x in ("fp", "fn")) == 0)
                 if case.kind == "restart" and pred is not None:
                     located[case.kind] += int(case.meta["restart"] in [tuple(r) for r in pred.restarts])
         for k, evs in per_kind.items():
@@ -112,7 +112,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
                 continue
             b = _block(evs)
             b.update(n_cases=len(evs), exact=exact[k] / len(evs),
-                     false_flags=(b["strict"]["fp"] + b["extra"]["fp"]) / len(evs))
+                     false_flags=sum(b[k]["fp"] for k in ("strict", "extra", "held_long", "late")) / len(evs))
             if k == "restart":
                 b["located"] = located[k] / len(evs)
             board["synth"][k] = b
@@ -133,7 +133,7 @@ def flatten(board: dict) -> dict[str, float]:
     out["onset_only.clean"] = board["onset_only"]["clean"]
     for k, b in board["synth"].items():
         out[f"synth.{k}.exact"] = b["exact"]
-        for c in ("strict", "extra"):
+        for c in ("strict", "extra", "held_long", "late"):
             if b[c]["recall"] is not None:
                 out[f"synth.{k}.{c}.recall"] = b[c]["recall"]
         out[f"synth.{k}.false_flags"] = b["false_flags"]
@@ -164,12 +164,12 @@ def render(board: dict) -> str:
     o = board["onset_only"]
     L += ["", f"ONSET-ONLY (pitch term off): {o['clean']}/{o['n']} clean monophonic takes still flag nothing"]
     if board["synth"]:
-        L += ["", "SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R | false flags/case"]
+        L += ["", "SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  held R  late R | false flags/case"]
         for k, b in board["synth"].items():
             s = b["strict"]
             loc = f" | restart located {_f(b['located'])}" if "located" in b else ""
             L.append(f"  {k:<26} {b['n_cases']:>6} | {_f(b['exact'])} |      {_f(s['precision'])} {_f(s['recall'])} {_f(s['f1'])} |"
-                     f"  {_f(b['extra']['recall'])}  | {b['false_flags']:.2f}{loc}")
+                     f"  {_f(b['extra']['recall'])}   {_f(b['held_long']['recall'])}   {_f(b['late']['recall'])} | {b['false_flags']:.2f}{loc}")
     if board["real_errors"]:
         L += ["", f"REAL-TAKE DISAGREEMENTS ({len(board['real_errors'])})"] + [f"  {e}" for e in board["real_errors"]]
     return "\n".join(L)

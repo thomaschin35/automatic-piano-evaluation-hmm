@@ -28,7 +28,7 @@ def fake_bundle(spec, frames_per_note=10):
     b = sf.Stage1FeatureBundle(audio=audio, score=None, segments=[], candidate_scores=pres,
                                candidate_onset_scores=ons, note_scores={}, note_onset_scores={},
                                unexpected_pitch_scores=np.zeros(T), broadband_onset=np.zeros(T),
-                               frame_energy=np.ones(T), observations=np.zeros((T, 3)), tracked_pitches=())
+                               frame_energy=np.linspace(1.0, 0.5, T), observations=np.zeros((T, 3)), tracked_pitches=())
     return rescore(b, spec.to_score_model())
 
 
