@@ -43,21 +43,25 @@ class V3Config:
     match_min_salience: float = 0.30  # an expected pitch counts as struck from this salience up
     # --- alignment costs (lower is better)
     sub_cost: float = 3.0             # event explains a position with the wrong pitch
-    sub_min_salience: float = 0.45    # a weak event cannot stand in for a note
+    sub_cost_near: float = 2.5        # ... when it is a neighbouring key (within a whole tone): the usual slip
+    skip_time_slack: float = 1.0      # a dropped note usually drops its time too: allow that reading at this cost
+    extra_time_slack: float = 1.5     # an added note usually adds its time: likewise
+    sub_min_salience: float = 0.40    # a weak event cannot stand in for a note
     skip_cost: float = 4.0            # a score note with no event
     jump_cost: float = 9.0            # a long forward skip costs jump_cost + jump_step per note at most
     jump_step: float = 0.25
     extra_cost: float = 4.0           # a clear event that belongs to no score note
     extra_cost_weak: float = 0.5      # the same for a faint event (likely noise)
-    extra_weak_salience: float = 0.35
-    extra_strong_salience: float = 0.60
+    extra_weak_salience: float = 0.30
+    extra_strong_salience: float = 0.45
     max_extras: int = 6               # consecutive unmatched events allowed
     timing_weight: float = 6.25       # x (ln of observed/expected inter-onset time)^2 ; 2x off -> 3.0
     timing_cap: float = 4.0
     chord_missing_cost: float = 2.0   # per expected pitch absent from a matched event (two voices)
     stop_cost: float = 6.0            # at most this much for the notes left unplayed at the end
     # --- reporting
-    extra_report_salience: float = 0.50
+    smudge_ratio: float = 0.90        # a stray key struck this strongly next to the right one: not a clean note
+    extra_report_salience: float = 0.40
     tempo_passes: int = 2
 
 
@@ -203,7 +207,8 @@ def emission_cost(event: Event, pos: Position, cfg: V3Config) -> float:
         return cfg.chord_missing_cost * len(missing)
     if event.salience < cfg.sub_min_salience:
         return np.inf
-    return cfg.sub_cost + cfg.chord_missing_cost * (len(missing) - 1)
+    near = min(abs(event.pitch - p) for p in pos.pitches) <= 2
+    return (cfg.sub_cost_near if near else cfg.sub_cost) + cfg.chord_missing_cost * (len(missing) - 1)
 
 
 def extra_cost(event: Event, cfg: V3Config) -> float:
@@ -235,7 +240,9 @@ def align(events: list[Event], positions: list[Position], cfg: V3Config,
     skips = jj[None, :] - jj[:, None] - 1                          # [j', j] notes passed over
     skip_c = np.where(skips >= 0, np.minimum(skips * cfg.skip_cost, cfg.jump_cost + skips * cfg.jump_step), np.inf)
     dbeat = beat[None, :] - beat[:, None]                          # [j', j]
+    own = np.broadcast_to(np.diff(beat, append=beat[-1] + 1.0)[:, None], (J, J))    # beats of note j' itself
     fwd = skips >= 0
+    skipped = skips >= 1
 
     dp = np.full((E, J), np.inf)
     bp = np.full((E, J, 2), -1, dtype=int)
@@ -245,7 +252,13 @@ def align(events: list[Event], positions: list[Position], cfg: V3Config,
         for e0 in range(max(0, e - 1 - cfg.max_extras), e):
             between = xcum[e] - xcum[e0 + 1]
             tr = np.full((J, J), np.inf)
-            tr[fwd] = skip_c[fwd] + _timing(t[e] - t[e0], dbeat[fwd], spb[e], cfg)
+            ioi = t[e] - t[e0]
+            tr[fwd] = skip_c[fwd] + _timing(ioi, dbeat[fwd], spb[e], cfg)        # time of the skipped notes kept
+            tr[skipped] = np.minimum(tr[skipped], skip_c[skipped] + cfg.skip_time_slack
+                                     + _timing(ioi, own[skipped], spb[e], cfg))   # ... or dropped with them
+            if e0 < e - 1:                       # extras in between: they may have added their own time
+                tr[fwd] = np.minimum(tr[fwd], skip_c[fwd] + cfg.extra_time_slack
+                                     + _timing(t[e] - t[e - 1], dbeat[fwd], spb[e], cfg))
             if back_cost is not None:
                 tr = np.minimum(tr, back_cost)
             cand = dp[e0][:, None] + tr + between                  # [j', j]
@@ -346,7 +359,7 @@ def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg
         s = struck(event, p, pos.pitches, cfg)
         if s > 0.0:
             # two keys at once with the stray one at least as strong: the note was not played cleanly
-            stray = [(q, sq) for q, sq in free if q not in used and q not in prev_pitches and sq >= s]
+            stray = [(q, sq) for q, sq in free if q not in used and q not in prev_pitches and sq >= cfg.smudge_ratio * s]
             if len(pos.pitches) == 1 and stray:
                 used.add(stray[0][0])
                 out.append(PitchVerdict(p, "wrong_pitch", stray[0][0], event.frame))

@@ -46,16 +46,30 @@ def _position(after: str | None, spec_ids: dict) -> tuple[str | None, int]:
 
 
 def _match_extras(gold: list, pred: list, spec_ids: dict) -> int:
-    """Greedy one-to-one matching; a pair matches if same hand (or START) and |index diff| <= 1."""
+    """Greedy one-to-one matching; a pair matches if same hand (or START) and |index diff| <= 1.
+    Inside a run of notes that all have the extra's own pitch (E E + one more E) the position of
+    the extra cannot be heard, so any position along that run matches."""
     gpos = [_position(g.after, spec_ids) for g in gold]
     ppos = [_position(p.after_note_id, spec_ids) for p in pred]
+    by_hand_index = {(n.hand, n.index): n.pitch for n in spec_ids.values()}
+
+    def same_run(g, p, gp, pp) -> bool:
+        pitch = g.played if g.played is not None else p.pitch
+        if pitch is None or (p.pitch is not None and g.played is not None and p.pitch != g.played):
+            return False
+        hand = gp[0] or pp[0]
+        lo, hi = sorted((gp[1], pp[1]))
+        return hand is not None and all(by_hand_index.get((hand, k)) == pitch for k in range(max(lo, 1), hi + 1))
+
     used, hits = set(), 0
-    for gh, gi in gpos:
+    for g, (gh, gi) in zip(gold, gpos):
         best = None
         for j, (ph, pi) in enumerate(ppos):
-            if j in used or abs(gi - pi) > 1:
+            if j in used:
                 continue
             if gh is not None and ph is not None and gh != ph:
+                continue
+            if abs(gi - pi) > 1 and not same_run(g, pred[j], (gh, gi), (ph, pi)):
                 continue
             if best is None or abs(gi - pi) < abs(gi - ppos[best][1]):
                 best = j
