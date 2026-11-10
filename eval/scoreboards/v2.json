@@ -861,39 +861,39 @@
    "n_notes": 1344,
    "clean": 0,
    "n_perfect": 0,
-   "played_pitch_accuracy": null,
+   "played_pitch_accuracy": 1.0,
    "failed": [],
    "error": {
-    "tp": 0,
-    "fp": 20,
-    "fn": 0,
-    "precision": 0.0,
-    "recall": null,
-    "f1": 0.0
+    "tp": 5,
+    "fp": 15,
+    "fn": 61,
+    "precision": 0.25,
+    "recall": 0.07575757575757576,
+    "f1": 0.11627906976744186
    },
    "strict": {
-    "tp": 0,
-    "fp": 20,
-    "fn": 0,
-    "precision": 0.0,
-    "recall": null,
-    "f1": 0.0
+    "tp": 5,
+    "fp": 15,
+    "fn": 61,
+    "precision": 0.25,
+    "recall": 0.07575757575757576,
+    "f1": 0.11627906976744186
    },
    "goal": {
-    "tp": 0,
-    "fp": 20,
-    "fn": 0,
-    "precision": 0.0,
-    "recall": null,
-    "f1": 0.0
+    "tp": 5,
+    "fp": 15,
+    "fn": 61,
+    "precision": 0.25,
+    "recall": 0.07575757575757576,
+    "f1": 0.11627906976744186
    },
    "wrong_pitch": {
-    "tp": 0,
-    "fp": 14,
-    "fn": 0,
-    "precision": 0.0,
-    "recall": null,
-    "f1": 0.0
+    "tp": 5,
+    "fp": 9,
+    "fn": 61,
+    "precision": 0.35714285714285715,
+    "recall": 0.07575757575757576,
+    "f1": 0.125
    },
    "missed": {
     "tp": 0,
@@ -906,7 +906,7 @@
    "extra": {
     "tp": 0,
     "fp": 0,
-    "fn": 114,
+    "fn": 48,
     "precision": null,
     "recall": 0.0,
     "f1": 0.0
@@ -928,8 +928,8 @@
     "f1": null
    },
    "n_cases": 114,
-   "exact": 0.0,
-   "false_flags": 0.17543859649122806
+   "exact": 0.043859649122807015,
+   "false_flags": 0.13157894736842105
   },
   "extra_dup": {
    "n_takes": 114,
@@ -1006,16 +1006,16 @@
    "exact": 0.0,
    "false_flags": 0.05263157894736842
   },
-  "hesitate": {
+  "hold": {
    "n_takes": 126,
    "n_notes": 1596,
-   "clean": 116,
-   "n_perfect": 126,
+   "clean": 0,
+   "n_perfect": 0,
    "played_pitch_accuracy": null,
    "failed": [],
    "error": {
     "tp": 0,
-    "fp": 10,
+    "fp": 9,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1023,7 +1023,7 @@
    },
    "strict": {
     "tp": 0,
-    "fp": 10,
+    "fp": 9,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1031,7 +1031,82 @@
    },
    "goal": {
     "tp": 0,
-    "fp": 10,
+    "fp": 9,
+    "fn": 126,
+    "precision": 0.0,
+    "recall": 0.0,
+    "f1": 0.0
+   },
+   "wrong_pitch": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "missed": {
+    "tp": 0,
+    "fp": 9,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "extra": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "held_long": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 126,
+    "precision": null,
+    "recall": 0.0,
+    "f1": 0.0
+   },
+   "late": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "n_cases": 126,
+   "exact": 0.0,
+   "false_flags": 0.07142857142857142
+  },
+  "gap": {
+   "n_takes": 126,
+   "n_notes": 1596,
+   "clean": 0,
+   "n_perfect": 0,
+   "played_pitch_accuracy": null,
+   "failed": [],
+   "error": {
+    "tp": 0,
+    "fp": 24,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "strict": {
+    "tp": 0,
+    "fp": 24,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "goal": {
+    "tp": 0,
+    "fp": 24,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1039,15 +1114,15 @@
    },
    "wrong_pitch": {
     "tp": 0,
-    "fp": 1,
+    "fp": 0,
     "fn": 0,
-    "precision": 0.0,
+    "precision": null,
     "recall": null,
-    "f1": 0.0
+    "f1": null
    },
    "missed": {
     "tp": 0,
-    "fp": 9,
+    "fp": 24,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1072,14 +1147,14 @@
    "late": {
     "tp": 0,
     "fp": 0,
-    "fn": 0,
+    "fn": 126,
     "precision": null,
-    "recall": null,
-    "f1": null
+    "recall": 0.0,
+    "f1": 0.0
    },
    "n_cases": 126,
-   "exact": 0.9206349206349206,
-   "false_flags": 0.07936507936507936
+   "exact": 0.0,
+   "false_flags": 0.19047619047619047
   },
   "stop_early": {
    "n_takes": 24,
@@ -1157,15 +1232,15 @@
    "false_flags": 4.083333333333333
   },
   "restart": {
-   "n_takes": 258,
-   "n_notes": 3366,
-   "clean": 167,
-   "n_perfect": 258,
+   "n_takes": 156,
+   "n_notes": 2046,
+   "clean": 70,
+   "n_perfect": 156,
    "played_pitch_accuracy": null,
    "failed": [],
    "error": {
     "tp": 0,
-    "fp": 91,
+    "fp": 86,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1173,7 +1248,7 @@
    },
    "strict": {
     "tp": 0,
-    "fp": 91,
+    "fp": 86,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1181,7 +1256,7 @@
    },
    "goal": {
     "tp": 0,
-    "fp": 91,
+    "fp": 86,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1197,7 +1272,7 @@
    },
    "missed": {
     "tp": 0,
-    "fp": 89,
+    "fp": 84,
     "fn": 0,
     "precision": 0.0,
     "recall": null,
@@ -1227,11 +1302,13 @@
     "recall": null,
     "f1": null
    },
-   "n_cases": 258,
-   "exact": 0.6472868217054264,
-   "false_flags": 0.35271317829457366,
+   "n_cases": 156,
+   "exact": 0.44871794871794873,
+   "false_flags": 0.5512820512820513,
    "located": 0.0
   }
  },
- "seconds": 59.0
+ "seconds": 63.3,
+ "crashes": 0,
+ "crash_examples": []
 }

@@ -1,4 +1,122 @@
-# Dynamic Tempo Calibration & Onset Normalization (`stft_hmm_v2`)
+# Piano score-following evaluator: `stft_hmm_v3` (branch `thomas-hmm-2`)
+
+Goal: follow a player through a known score (monophonic lines, simple two-voice pieces) and say,
+per note, **correct / wrong pitch / missed / held too long**, with F1 >= 0.9 on monophonic pieces,
+and follow the player when they **go back** and try again.
+
+`stft_hmm_v3.py` is a note-level hidden Markov model over detected key strikes. It replaces the
+frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
+
+## How v3 works
+
+1. **Strikes.** From the unchanged `stft_features.py` front end, a strike is a per-pitch onset peak
+   followed by sustained presence of that pitch. Simultaneous strikes form one event; overtones,
+   sub-harmonic ghosts and semitone leakage of the strongest pitch are folded into it.
+2. **Alignment.** Viterbi over the event sequence; the hidden state is the score position.
+   An event can be the next note (right or wrong pitch), a later note (notes in between were
+   missed), an earlier note (the player went back), or no note (an extra). The time between
+   matched events is compared with the written beat distance at the local tempo, with separate
+   allowances for a dropped note that drops its time and an added note that adds its own.
+3. **Verdicts.** Read off the path. A wrong key followed by the right one is reported as a wrong
+   pitch on that note ("then corrected"). A gap of >= 1.5x its written length is "held too long"
+   if the note rang through it and "late" for the next note if it had died away.
+
+```bash
+.venv/bin/python stft_hmm_v3.py --audio recordings/eval-interviews/processed/2ode-1h-wrong.wav --model ode_melody
+```
+
+## Results
+
+32 labelled takes, 814 notes, two players. "Strict" counts a note only if the label matches
+(wrong pitch vs missed); "goal" adds held-too-long. Same test suite for both models.
+
+| Real takes | v2 | v3 |
+|---|---|---|
+| Monophonic strict F1 (22 takes, 28 error notes) | 0.85 (22 hit / 2 false / 6 missed) | **1.00** (28 / 0 / 0) |
+| Monophonic goal F1 (strict + held too long) | 0.80 | **0.93** |
+| Monophonic clean takes with no flag | 11 / 12 | **12 / 12** |
+| Played pitch named correctly (monophonic) | 95% | 100% |
+| Two-hand strict F1 (10 takes) | 0.54 | 0.60 |
+| Two-hand clean takes with no flag | 1 / 5 | **5 / 5** |
+| All takes strict F1 | 0.69 | 0.81 |
+
+| Synthetic errors made from the 12 clean monophonic takes (fully correct cases) | cases | v2 | v3 |
+|---|---|---|---|
+| one wrong pitch | 552 | 88% | 99% |
+| hand one position off for four notes | 66 | 14% | 88% |
+| note missing, different pitch from its neighbour | 240 | 28-48% | 100% |
+| note missing, repeat of its neighbour | 126 | 7% | 100% |
+| wrong key then the right one / re-struck note | 228 | 0-4% | 97-98% |
+| note held through a double-length gap | 126 | 0% | 94% |
+| silent double-length gap (next note late) | 126 | 0% | 100% |
+| stops before the end | 24 | 8% | 100% |
+| goes back to a bar start and plays on (located) | 156 | 0% | 100% |
+
+One real take with a restart exists (`1can-2h-1`, excluded from scoring because the player
+"backtracks to the start of measure 5"). v3 reports exactly one restart there, to measure 5 beat 1.
+
+### What these numbers do and do not show
+
+- **The monophonic target is met on the data that exists, and that data is small.** 28 error
+  notes come from about ten separate mistakes by two players. The settings were chosen while
+  looking at these same takes. Treat 1.00 as "no known failure", not as a measured error rate;
+  the synthetic suite and the sensitivity table below are the evidence against overfitting.
+- **Held too long is not solved.** None of the 3 monophonic gold labels is hit and one note is
+  flagged that is not labelled. The definition works on synthetic cases (94%), but two of the three
+  labelled notes measure only 1.0-1.2x their written length, so label and definition disagree.
+  "Late" hits 4 of 5 labels and also flags 3 unlabelled gaps of 1.6x-2.4x.
+- **Two-voice pieces:** octave scales and Ode with harmony are clean. A right-hand note that
+  doubles the left hand at the octave, fifth or third and is *left out* cannot be detected (it is
+  indistinguishable from the bass's own overtone on these recordings); a *wrong* one still is.
+  `canon_both` remains at about 0.6 strict F1.
+- Synthetic cases are edits of real clean takes (score changed, or feature frames cut, repeated,
+  reordered). They test the alignment logic on hundreds of cases; they are not new performances.
+
+### Sensitivity of the hand-set numbers
+
+Each of 14 settings moved by -25% and +25%, one at a time (`python -m eval.sensitivity`):
+
+| Outcome over the 28 variants | range |
+|---|---|
+| Monophonic strict F1 | 0.95 - 1.00 (1.00 in 24 of 28) |
+| Monophonic goal F1 | 0.89 - 0.95, except 0.82 with the timing threshold at 1.12x |
+| Monophonic clean takes | 12 / 12 in 25 of 28; 11 in two; 9 with the timing threshold at 1.12x |
+| All-takes strict F1 | 0.79 - 0.82 |
+| Synthetic suite, mean fully-correct | 0.93 - 0.99, except 0.77 with the timing threshold at 1.12x |
+
+The alignment costs (wrong note, skip, extra, timing weight, going back) do not move the real-take
+scores at all within +-25%. The settings that matter are the ones that decide what counts as a
+strike (`onset_full`, `ghost_ratio`, `extra_report_salience`) and the timing threshold.
+
+## Checking a change
+
+```bash
+.venv/bin/python -m eval.cli check --model v3            # unit tests + real takes + synthetic suite
+.venv/bin/python -m eval.cli check --model v3 --accept   # store as the accepted scoreboard
+.venv/bin/python -m eval.cli run --model v3 --split all  # full run with per-note CSV, for `compare`
+.venv/bin/python -m eval.sensitivity                     # the table above
+```
+
+`check` compares with the accepted scoreboard in `eval/scoreboards/`, lists every metric that moved,
+refuses to accept a regression on the goal metrics, and fails if any prediction crashed.
+Features are cached under `eval/cache/` (rebuilt when `stft_features.py` changes).
+The decisions behind each phase, including the ones that failed, are in [eval/V3_LOG.md](eval/V3_LOG.md).
+
+## Next steps
+
+- Record takes with deliberate mistakes by more players, especially held notes and restarts, and
+  agree on what "held too long" means before labelling them.
+- Hold out a player: nothing here has been tested on a pianist the settings have not seen.
+- Octave doubling needs per-piano calibration (single-hand takes give each key's own overtone
+  profile) before a missing doubled note can be detected.
+
+---
+
+# Earlier work on this line: tempo calibration in `stft_hmm_v2`
+
+> Note from the v3 review: replacing the IOI tempo curve below with a plain global stretch changes no
+> prediction on these takes, so the gains in this section came from the other changes in that commit
+> (wider attack, sustain floor, onset sharpening).
 
 This branch introduces pitch-gated Inter-Onset Interval (IOI) dynamic tempo tracking, local onset normalization, peak sharpening, and emission tuning to the `stft_hmm_v2` pipeline. These optimizations decouple human expressive timing variations (rubato, hesitations, and practice speed drift) from pitch evaluation errors, substantially reducing false alarms.
 

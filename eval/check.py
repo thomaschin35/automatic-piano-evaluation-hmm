@@ -61,14 +61,14 @@ def _predict(adapter, bundle, spec, overrides=None):
         return None
 
 
-def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
+def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict | None = None) -> dict:
     pieces = all_pieces()
     t0 = time.time()
     CRASHES.clear()
     real, clean_mono = [], []
     for t, spec, labels, audio in _ready_takes(pieces):
         bundle = load_bundle(audio, t.piece)
-        ev = evaluate_take(t.id, spec, labels, _predict(adapter, bundle, spec))
+        ev = evaluate_take(t.id, spec, labels, _predict(adapter, bundle, spec, overrides))
         real.append(ev)
         if labels.perfect and t.piece in synth.MONO_PIECES:
             clean_mono.append((t, spec, bundle))
@@ -93,7 +93,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
         ev = evaluate_take(t.id, spec, type("L", (), {
             "perfect": True, "note_labels": lambda self, s: {n.id: "correct" for n in s.notes()},
             "played": lambda self: {}, "flags": lambda self: {}, "extras": lambda self: []})(),
-            _predict(adapter, bundle, spec, adapter.onset_only))
+            _predict(adapter, bundle, spec, {**(overrides or {}), **adapter.onset_only}))
         ok += int(not ev.failed and ev.pred_errors == 0)
     board["onset_only"] = {"clean": ok, "n": len(clean_mono)}
 
@@ -104,7 +104,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True) -> dict:
         located: Counter = Counter()
         for t, spec, bundle in clean_mono:
             for case in synth.generate(t.id, bundle, spec, kinds):
-                pred = _predict(adapter, case.bundle, case.spec)
+                pred = _predict(adapter, case.bundle, case.spec, overrides)
                 ev = evaluate_take(f"{t.id}:{case.kind}", case.spec, case.gold, pred)
                 per_kind[case.kind].append(ev)
                 c = ev.counts
