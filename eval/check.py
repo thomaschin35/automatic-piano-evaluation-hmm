@@ -40,9 +40,12 @@ def _block(evals) -> dict:
     return out
 
 
-def _ready_takes(pieces):
+def _ready_takes(pieces, split: str = "dev"):
+    """Takes `check` scores. The test split is held out: only included when asked for."""
     from eval.cli import check_take, model_audio
     for t in load_manifest():
+        if split != "all" and t.split != split:
+            continue
         status, spec, labels = check_take(t, pieces)
         if status == "ok":
             yield t, spec, labels, model_audio(t.audio)
@@ -61,12 +64,13 @@ def _predict(adapter, bundle, spec, overrides=None):
         return None
 
 
-def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict | None = None) -> dict:
+def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict | None = None,
+          split: str = "dev") -> dict:
     pieces = all_pieces()
     t0 = time.time()
     CRASHES.clear()
     real, clean_mono = [], []
-    for t, spec, labels, audio in _ready_takes(pieces):
+    for t, spec, labels, audio in _ready_takes(pieces, split):
         bundle = load_bundle(audio, t.piece)
         ev = evaluate_take(t.id, spec, labels, _predict(adapter, bundle, spec, overrides))
         real.append(ev)

@@ -408,7 +408,10 @@ def cmd_check(args) -> int:
         if rc.returncode:
             print(rc.stderr)
             return 1
-    board = check.build(get_adapter(args.model), with_synth=not args.no_synth)
+    if args.split != "dev" and args.accept:
+        print("Refusing to accept a scoreboard that includes held-out takes (--split test/all).")
+        return 2
+    board = check.build(get_adapter(args.model), with_synth=not args.no_synth, split=args.split)
     print(check.render(board))
     ref = check.load(args.against or args.model)
     regressions = []
@@ -521,6 +524,8 @@ def main(argv=None) -> int:
     p.add_argument("--log", help="with --accept: append the scoreboard to eval/V3_LOG.md under this title")
     p.add_argument("--no-tests", action="store_true")
     p.add_argument("--no-synth", action="store_true")
+    p.add_argument("--split", choices=SPLITS + ("all",), default="dev",
+                   help="default dev; the held-out test split is never scored unless asked for")
     p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("plots", help="draw charts for a run (also done automatically by run)")
