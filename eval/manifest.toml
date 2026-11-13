@@ -420,3 +420,233 @@ audio = "recordings/person3/3ode-2h-missrh9.m4a"
 id = "3ode-2h-pause9"
 piece = "ode_harmony"
 audio = "recordings/person3/3ode-2h-pause9.m4a"
+
+[[take]]
+id = "4cmajor-1h-clean-soft"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-clean-soft.m4a"
+
+[[take]]
+id = "4cmajor-1h-combo-extra2-wrong7"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-combo-extra2-wrong7.m4a"
+
+[[take]]
+id = "4cmajor-1h-extra-fsharp"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-extra-fsharp.m4a"
+
+[[take]]
+id = "4cmajor-1h-extra-g5-quick"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-extra-g5-quick.m4a"
+
+[[take]]
+id = "4cmajor-1h-late-keep4"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-late-keep4.m4a"
+
+[[take]]
+id = "4cmajor-1h-late-lift7"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-late-lift7.m4a"
+
+[[take]]
+id = "4cmajor-1h-miss-e3f4"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-miss-e3f4.m4a"
+
+[[take]]
+id = "4cmajor-1h-restart-back2"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-restart-back2.m4a"
+
+[[take]]
+id = "4cmajor-1h-wrong-b6"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-wrong-b6.m4a"
+
+[[take]]
+id = "4cmajor-1h-wrong-octave1"
+piece = "c_major_rh"
+audio = "recordings/round2/4cmajor-1h-wrong-octave1.m4a"
+
+[[take]]
+id = "4emajor-1h-down-clean-soft"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-clean-soft.m4a"
+
+[[take]]
+id = "4emajor-1h-down-combo-wrong3-miss7"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-combo-wrong3-miss7.m4a"
+
+[[take]]
+id = "4emajor-1h-down-extra-b4-soft"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-extra-b4-soft.m4a"
+
+[[take]]
+id = "4emajor-1h-down-late-half7"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-late-half7.m4a"
+
+[[take]]
+id = "4emajor-1h-down-late-keep6"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-late-keep6.m4a"
+
+[[take]]
+id = "4emajor-1h-down-late-lift3"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-late-lift3.m4a"
+
+[[take]]
+id = "4emajor-1h-down-miss-gsharp6"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-miss-gsharp6.m4a"
+
+[[take]]
+id = "4emajor-1h-down-restart-pause"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-restart-pause.m4a"
+
+[[take]]
+id = "4emajor-1h-down-wrong-d2"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-wrong-d2.m4a"
+
+[[take]]
+id = "4emajor-1h-down-wrong-g6"
+piece = "e_major_rh_down"
+audio = "recordings/round2/4emajor-1h-down-wrong-g6.m4a"
+
+[[take]]
+id = "4ode-1h-clean-fast"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-clean-fast.m4a"
+
+[[take]]
+id = "4ode-1h-clean-loud"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-clean-loud.m4a"
+
+[[take]]
+id = "4ode-1h-clean-normal"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-clean-normal.m4a"
+
+[[take]]
+id = "4ode-1h-clean-verysoft"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-clean-verysoft.m4a"
+
+[[take]]
+id = "4ode-1h-combo-miss3-late9"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-combo-miss3-late9.m4a"
+
+[[take]]
+id = "4ode-1h-extra-brush-a"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-brush-a.m4a"
+
+[[take]]
+id = "4ode-1h-extra-c10-soft"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-c10-soft.m4a"
+
+[[take]]
+id = "4ode-1h-extra-d15-quick"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-d15-quick.m4a"
+
+[[take]]
+id = "4ode-1h-extra-e2-triple"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-e2-triple.m4a"
+
+[[take]]
+id = "4ode-1h-extra-f6"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-f6.m4a"
+
+[[take]]
+id = "4ode-1h-extra-start"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-extra-start.m4a"
+
+[[take]]
+id = "4ode-1h-late-half11"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-late-half11.m4a"
+
+[[take]]
+id = "4ode-1h-late-keep7"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-late-keep7.m4a"
+
+[[take]]
+id = "4ode-1h-late-lift14"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-late-lift14.m4a"
+
+[[take]]
+id = "4ode-1h-late-two3-10"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-late-two3-10.m4a"
+
+[[take]]
+id = "4ode-1h-miss-c10-keep"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-c10-keep.m4a"
+
+[[take]]
+id = "4ode-1h-miss-e13-drop"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-e13-drop.m4a"
+
+[[take]]
+id = "4ode-1h-miss-e2-keep"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-e2-keep.m4a"
+
+[[take]]
+id = "4ode-1h-miss-f6"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-f6.m4a"
+
+[[take]]
+id = "4ode-1h-miss-first"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-first.m4a"
+
+[[take]]
+id = "4ode-1h-miss-g5-drop"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-miss-g5-drop.m4a"
+
+[[take]]
+id = "4ode-1h-restart-wrong7"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-restart-wrong7.m4a"
+
+[[take]]
+id = "4ode-1h-wrong-anticip3"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-wrong-anticip3.m4a"
+
+[[take]]
+id = "4ode-1h-wrong-dsharp11-soft"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-wrong-dsharp11-soft.m4a"
+
+[[take]]
+id = "4ode-1h-wrong-fix12"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-wrong-fix12.m4a"
+
+[[take]]
+id = "4ode-1h-wrong-repeat3"
+piece = "ode_melody"
+audio = "recordings/round2/4ode-1h-wrong-repeat3.m4a"

@@ -550,3 +550,65 @@ REAL-TAKE DISAGREEMENTS (8)
   3ode-2h-pause9 RH10 C4 gold=correct pred=missed
   3ode-2h-extralh extras tp/fp/fn=0/0/1
 ```
+
+## 2026-11-13 10:49  Round 2 added: 46 held-out monophonic takes (mono_round2 goal F1 0.77)
+
+```
+SCOREBOARD  model=v3  (158.9s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all               104  1328 |   0.84   0.82   0.89 |       0.75  0.96  0.84 |  0.91  0.76  0.75  0.89   -   | 35/37
+  mono               91  1099 |   0.87   0.87   0.88 |       0.81  0.98  0.89 |  0.92  0.86  0.78  0.88   -   | 29/30
+  two_hand           13   229 |   0.56   0.43   1.00 |       0.33  0.75  0.46 |  0.86  0.00  0.00  1.00   -   | 6/7
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  mono_round2        46   550 |   0.77   0.76   0.82 |       0.67  0.95  0.78 |  0.82  0.76  0.67  0.82   -   | 8/9
+  two_hand_p3         6   108 |   0.43   0.20   1.00 |       0.14  0.50  0.22 |  0.67  0.00  0.00  1.00   -   | 1/2
+  mono counts, found/false/not found: wrong=23/3/1  missed=21/7/0  extra=9/0/5  late=15/2/2  held=0/0/0
+
+ONSET-ONLY (pitch term off): 29/30 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          30 |  0.97 |       0.00   -    0.00 |    -       -   | 0.07
+  sub                          1408 |  0.97 |       0.95  0.99  0.97 |    -       -   | 0.07
+  shift                         170 |  0.74 |       0.91  0.77  0.84 |    -       -   | 0.45
+  miss_ins_step                 322 |  0.90 |       0.85  0.92  0.89 |    -       -   | 0.22
+  miss_ins_repeat               322 |  0.87 |       0.84  0.89  0.86 |    -       -   | 0.23
+  miss_del                      292 |  0.86 |       0.89  0.88  0.88 |    -       -   | 0.15
+  extra_score                   292 |  0.89 |       0.87  0.88  0.87 |   0.98     -   | 0.15
+  extra_dup                     292 |  0.89 |       0.00   -    0.00 |   0.89     -   | 0.15
+  hold                          322 |  0.96 |       0.00   -    0.00 |    -      0.98 | 0.06
+  gap                           322 |  0.96 |       0.00   -    0.00 |    -      0.97 | 0.06
+  stop_early                     60 |  0.88 |       0.97  0.95  0.96 |    -       -   | 0.15
+  restart                       402 |  0.97 |       0.00   -    0.00 |    -       -   | 0.07 | restart located  0.96
+
+REAL-TAKE DISAGREEMENTS (26)
+  3cmajor-2h-clean RH1 C4 gold=correct pred=missed
+  3cmajor-2h-clean LH3 E3 gold=correct pred=missed
+  3cmajor-2h-clean LH4 F3 gold=correct pred=missed
+  3cmajor-2h-wrong5 LH3 E3 gold=correct pred=missed
+  3ode-2h-extralh RH3 F4 gold=correct pred=wrong_pitch
+  3ode-2h-missrh9 RH9 C4 gold=missed pred=correct
+  3ode-2h-pause9 RH10 C4 gold=correct pred=missed
+  4cmajor-1h-extra-fsharp RH5 G4 gold=correct pred=wrong_pitch
+  4cmajor-1h-wrong-octave1 RH2 D4 gold=correct pred=correct+late
+  4emajor-1h-down-clean-soft RH2 D#5 gold=correct pred=missed
+  4emajor-1h-down-clean-soft RH3 C#5 gold=correct pred=missed
+  4emajor-1h-down-extra-b4-soft RH2 D#5 gold=correct pred=missed
+  4emajor-1h-down-extra-b4-soft RH3 C#5 gold=correct pred=wrong_pitch+late
+  4emajor-1h-down-late-half7 RH7 F#4 gold=correct+late pred=correct
+  4emajor-1h-down-late-keep6 RH2 D#5 gold=correct pred=missed
+  4emajor-1h-down-wrong-d2 RH3 C#5 gold=correct pred=missed
+  4ode-1h-extra-d15-quick RH15 D4 gold=correct pred=missed
+  4ode-1h-extra-start RH1 E4 gold=correct pred=wrong_pitch
+  4ode-1h-late-half11 RH11 D4 gold=correct+late pred=correct
+  4ode-1h-wrong-anticip3 RH3 F4 gold=wrong_pitch pred=missed
+  3ode-2h-extralh extras tp/fp/fn=0/0/1
+  4cmajor-1h-extra-fsharp extras tp/fp/fn=0/0/1
+  4emajor-1h-down-extra-b4-soft extras tp/fp/fn=0/0/1
+  4ode-1h-extra-brush-a extras tp/fp/fn=0/0/1
+  4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
+  4ode-1h-extra-start extras tp/fp/fn=0/0/1
+```
