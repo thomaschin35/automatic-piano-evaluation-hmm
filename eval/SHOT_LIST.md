@@ -1,8 +1,8 @@
 # Recording shot list: held-out test set (player 3)
 
 **Purpose:** check v3 on a pianist it has never seen. Every number so far comes from players 1 and 2,
-and v3's settings were chosen while looking at their takes. These recordings go in the **test**
-split and are never used to tune anything.
+and v3's settings were chosen while looking at their takes. The scoreboard reports player 3 as its
+own row, so the first run on these takes shows how v3 does on a new player.
 
 **What you need:** a new player (a learner is ideal, but anyone who is not player 1 or 2), the same
 piano and phone, and about 35 minutes. That covers 36 takes of 10 to 25 seconds each, plus retries.
@@ -164,19 +164,16 @@ type yet).
 
 ## After recording
 
-1. Register the takes **as test** (this keeps them out of every tuning run):
+1. Register the takes (the recordings live in `recordings/person3/`):
    ```bash
-   .venv/bin/python -m eval.cli sync --dry-run --split test
-   .venv/bin/python -m eval.cli sync --split test
+   .venv/bin/python -m eval.cli sync
    ```
-   The dry run should list all 36 takes with the piece shown in the tables above.
-   Run this **before** `evaluate`: `evaluate` registers any new recording it finds as dev.
+   It should list all 36 takes with the piece shown in the tables above.
 2. Label them in the shared sheet as usual (`todo` -> `correct`, then mark the mistakes).
    Listen to every take; the "expected label" column is only a guide.
-3. Score them on their own, once:
+3. Score everything:
    ```bash
-   .venv/bin/python -m eval.cli evaluate --sheet ~/Downloads/labels.csv --model v3 --split test
+   .venv/bin/python -m eval.cli evaluate --sheet ~/Downloads/labels.csv --model v3
    ```
-
-**Rule for the test split:** look at the score, then do not change v3 because of it. Any fix
-made after seeing these results needs another fresh set to be measured on.
+   The `mono_p3` row of `python -m eval.cli check` is player 3 on their own. Note those numbers before
+   changing v3 because of them: once v3 is tuned on player 3, that row no longer measures a new player.

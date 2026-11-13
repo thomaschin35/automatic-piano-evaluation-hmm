@@ -93,7 +93,7 @@ strike (`onset_full`, `ghost_ratio`, `extra_report_salience`) and the timing thr
 ```bash
 .venv/bin/python -m eval.cli check --model v3            # unit tests + real takes + synthetic suite
 .venv/bin/python -m eval.cli check --model v3 --accept   # store as the accepted scoreboard
-.venv/bin/python -m eval.cli run --model v3 --split all  # full run with per-note CSV, for `compare`
+.venv/bin/python -m eval.cli run --model v3              # full run with per-note CSV, for `compare`
 .venv/bin/python -m eval.sensitivity                     # the table above
 ```
 
@@ -194,7 +194,7 @@ Convert raw `.m4a` interview files into 16-bit PCM `.wav` format:
 ### 3. Running Evaluation & Benchmarking
 Run the alignment and diagnostic scoring pipeline across all labeled interview takes:
 ```bash
-.venv/bin/python -m eval.cli run --model v2 --split all
+.venv/bin/python -m eval.cli run --model v2
 ```
 
 Expected behavior:

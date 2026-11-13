@@ -31,7 +31,6 @@ from eval.pieces import PieceSpec, parse_pitch
 
 LABELS_DIR = EVAL_DIR / "labels"
 MANIFEST_PATH = EVAL_DIR / "manifest.toml"
-SPLITS = ("dev", "test")
 
 
 @dataclass(frozen=True)
@@ -125,7 +124,7 @@ class Take:
     id: str
     piece: str
     audio: Path
-    split: str
+    split: str = ""         # unused for now: every take is scored
     notes: str = ""
     exclude: str = ""       # non-empty = never scored or labeled; the text says why
 
@@ -143,19 +142,16 @@ def load_manifest(path: Path = MANIFEST_PATH) -> list[Take]:
     for t in raw.get("take", []):
         if t["id"] in seen:
             raise ValueError(f"manifest: duplicate take id '{t['id']}'")
-        if t.get("split", "dev") not in SPLITS:
-            raise ValueError(f"manifest: take '{t['id']}' has split '{t.get('split')}' (use dev/test)")
         seen.add(t["id"])
         takes.append(Take(id=t["id"], piece=t["piece"], audio=REPO_DIR / t["audio"],
-                          split=t.get("split", "dev"), notes=t.get("notes", ""),
+                          split=t.get("split", ""), notes=t.get("notes", ""),
                           exclude=t.get("exclude", "")))
     return takes
 
 
-def append_manifest_entry(take_id: str, piece: str, audio_rel: str, split: str,
+def append_manifest_entry(take_id: str, piece: str, audio_rel: str,
                           path: Path = MANIFEST_PATH) -> None:
-    entry = (f'\n[[take]]\nid = "{take_id}"\npiece = "{piece}"\n'
-             f'audio = "{audio_rel}"\nsplit = "{split}"\n')
+    entry = f'\n[[take]]\nid = "{take_id}"\npiece = "{piece}"\naudio = "{audio_rel}"\n'
     with open(path, "a") as f:
         f.write(entry)
 

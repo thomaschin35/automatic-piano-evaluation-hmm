@@ -1,7 +1,7 @@
 # Every evaluated recording. Audio paths are relative to the repo root.
-# Labels live at eval/labels/<piece>/<id>.toml. split = "dev" | "test"
-# (test is only scored with `python -m eval.cli run --split test`).
-# Add new takes with: python -m eval.cli new-take <audio> --piece <piece> [--split test]
+# Labels live at eval/labels/<piece>/<id>.toml. Every take that is labelled and not
+# excluded is scored by `run` and `check`. (Old entries still carry a `split` field; it is ignored.)
+# Add new takes with: python -m eval.cli sync   (or new-take <audio> --piece <piece>)
 
 [[take]]
 id = "c_major_asc"
@@ -215,3 +215,198 @@ id = "1ode-2h-2"
 piece = "ode_harmony"
 audio = "recordings/eval-interviews/raw/1ode-2h-2.m4a"
 split = "dev"
+
+[[take]]
+id = "1ode-2h-3"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/raw/1ode-2h-3.m4a"
+
+[[take]]
+id = "2ode-2h-1"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/raw/2ode-2h-1.m4a"
+
+[[take]]
+id = "2ode-2h-2"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/raw/2ode-2h-2.m4a"
+
+[[take]]
+id = "3cmajor-1h-clean"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-clean.m4a"
+
+[[take]]
+id = "3cmajor-1h-extra3"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-extra3.m4a"
+
+[[take]]
+id = "3cmajor-1h-miss4"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-miss4.m4a"
+
+[[take]]
+id = "3cmajor-1h-overlap6"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-overlap6.m4a"
+
+[[take]]
+id = "3cmajor-1h-pause5"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-pause5.m4a"
+
+[[take]]
+id = "3cmajor-1h-restart"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-restart.m4a"
+
+[[take]]
+id = "3cmajor-1h-stretch4"
+piece = "c_major_rh"
+audio = "recordings/person3/3cmajor-1h-stretch4.m4a"
+
+[[take]]
+id = "3cmajor-2h-clean"
+piece = "c_major_both"
+audio = "recordings/person3/3cmajor-2h-clean.m4a"
+
+[[take]]
+id = "3cmajor-2h-wrong5"
+piece = "c_major_both"
+audio = "recordings/person3/3cmajor-2h-wrong5.m4a"
+
+[[take]]
+id = "3emajor-1h-down-clean"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-clean.m4a"
+
+[[take]]
+id = "3emajor-1h-down-extra2"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-extra2.m4a"
+
+[[take]]
+id = "3emajor-1h-down-overlap4"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-overlap4.m4a"
+
+[[take]]
+id = "3emajor-1h-down-pause5"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-pause5.m4a"
+
+[[take]]
+id = "3emajor-1h-down-restart"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-restart.m4a"
+
+[[take]]
+id = "3emajor-1h-down-wrong3"
+piece = "e_major_rh_down"
+audio = "recordings/person3/3emajor-1h-down-wrong3.m4a"
+
+[[take]]
+id = "3ode-1h-clean1"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-clean1.m4a"
+
+[[take]]
+id = "3ode-1h-clean2"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-clean2.m4a"
+
+[[take]]
+id = "3ode-1h-extra12"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-extra12.m4a"
+
+[[take]]
+id = "3ode-1h-extra4"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-extra4.m4a"
+
+[[take]]
+id = "3ode-1h-fix6"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-fix6.m4a"
+
+[[take]]
+id = "3ode-1h-miss10"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-miss10.m4a"
+
+[[take]]
+id = "3ode-1h-miss8"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-miss8.m4a"
+
+[[take]]
+id = "3ode-1h-overlap7"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-overlap7.m4a"
+
+[[take]]
+id = "3ode-1h-pause4"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-pause4.m4a"
+
+[[take]]
+id = "3ode-1h-pause9"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-pause9.m4a"
+
+[[take]]
+id = "3ode-1h-restart1"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-restart1.m4a"
+
+[[take]]
+id = "3ode-1h-restart5"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-restart5.m4a"
+
+[[take]]
+id = "3ode-1h-restart6"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-restart6.m4a"
+
+[[take]]
+id = "3ode-1h-shift"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-shift.m4a"
+
+[[take]]
+id = "3ode-1h-stop"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-stop.m4a"
+
+[[take]]
+id = "3ode-1h-stretch12"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-stretch12.m4a"
+
+[[take]]
+id = "3ode-1h-wrong3"
+piece = "ode_melody"
+audio = "recordings/person3/3ode-1h-wrong3.m4a"
+
+[[take]]
+id = "3ode-2h-clean"
+piece = "ode_harmony"
+audio = "recordings/person3/3ode-2h-clean.m4a"
+
+[[take]]
+id = "3ode-2h-extralh"
+piece = "ode_harmony"
+audio = "recordings/person3/3ode-2h-extralh.m4a"
+
+[[take]]
+id = "3ode-2h-missrh9"
+piece = "ode_harmony"
+audio = "recordings/person3/3ode-2h-missrh9.m4a"
+
+[[take]]
+id = "3ode-2h-pause9"
+piece = "ode_harmony"
+audio = "recordings/person3/3ode-2h-pause9.m4a"

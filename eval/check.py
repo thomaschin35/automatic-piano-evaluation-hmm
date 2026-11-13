@@ -40,12 +40,10 @@ def _block(evals) -> dict:
     return out
 
 
-def _ready_takes(pieces, split: str = "dev"):
-    """Takes `check` scores. The test split is held out: only included when asked for."""
+def _ready_takes(pieces):
+    """Every labelled, non-excluded take in the manifest."""
     from eval.cli import check_take, model_audio
     for t in load_manifest():
-        if split != "all" and t.split != split:
-            continue
         status, spec, labels = check_take(t, pieces)
         if status == "ok":
             yield t, spec, labels, model_audio(t.audio)
@@ -64,13 +62,12 @@ def _predict(adapter, bundle, spec, overrides=None):
         return None
 
 
-def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict | None = None,
-          split: str = "dev") -> dict:
+def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict | None = None) -> dict:
     pieces = all_pieces()
     t0 = time.time()
     CRASHES.clear()
     real, clean_mono = [], []
-    for t, spec, labels, audio in _ready_takes(pieces, split):
+    for t, spec, labels, audio in _ready_takes(pieces):
         bundle = load_bundle(audio, t.piece)
         ev = evaluate_take(t.id, spec, labels, _predict(adapter, bundle, spec, overrides))
         real.append(ev)
@@ -83,6 +80,8 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
         "two_hand": _block([e for e in real if e.piece not in synth.MONO_PIECES]),
         "mono_p1": _block([e for e in mono if e.take_id.startswith("1")]),
         "mono_p2": _block([e for e in mono if e.take_id.startswith("2")]),
+        "mono_p3": _block([e for e in mono if e.take_id.startswith("3")]),
+        "two_hand_p3": _block([e for e in real if e.piece not in synth.MONO_PIECES and e.take_id.startswith("3")]),
     }, "real_errors": [
         f"{r['take']} {r['note_id']} {r['pitch']} gold={r['gold']}{'+' + r['gold_flags'] if r['gold_flags'] else ''}"
         f" pred={r['pred']}{'+' + r['pred_flags'] if r['pred_flags'] else ''}"
