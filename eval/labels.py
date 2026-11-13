@@ -18,6 +18,10 @@ note id from `python -m eval.cli score <piece>`. Notes not listed are correct.
     type = "extra"
     played = "D#4"           # optional
 
+    [[restart]]
+    from = "RH7"             # the player went back after RH7 ...
+    to = "RH5"               # ... and resumed at RH5 (notes are labelled by the final attempt)
+
 A file with `todo = true` has not been filled in yet and is skipped by `run`.
 """
 from __future__ import annotations
@@ -47,6 +51,7 @@ class TakeLabels:
     perfect: bool
     errors: list[GoldError] = field(default_factory=list)
     todo: bool = False
+    restarts: list[tuple[str, str]] = field(default_factory=list)   # (from note id, to note id)
 
     def note_labels(self, spec: PieceSpec) -> dict[str, str]:
         out = {n.id: "correct" for n in spec.notes()}
@@ -93,7 +98,13 @@ def load_labels(path: str | Path, spec: PieceSpec) -> TakeLabels:
             if "note" not in e:
                 raise ValueError(f"{where}: '{etype}' needs 'note' (e.g. note = \"RH4\")")
             errors.append(GoldError(etype, note_id=e["note"], played=played))
-    labels = TakeLabels(piece=spec.name, perfect=bool(raw.get("perfect", False)), errors=errors, todo=todo)
+    restarts = []
+    for i, r in enumerate(raw.get("restart", []), 1):
+        if "from" not in r or "to" not in r:
+            raise ValueError(f"{path.name} restart #{i}: needs 'from' and 'to' note ids")
+        restarts.append((r["from"], r["to"]))
+    labels = TakeLabels(piece=spec.name, perfect=bool(raw.get("perfect", False)), errors=errors, todo=todo,
+                        restarts=restarts)
     if not todo:
         validate_labels(labels, spec, path)
     return labels
@@ -105,6 +116,10 @@ def validate_labels(labels: TakeLabels, spec: PieceSpec, path: Path) -> None:
         raise ValueError(f"{path}: perfect = true but {len(labels.errors)} errors are listed")
     if not labels.perfect and not labels.errors:
         raise ValueError(f"{path}: perfect = false but no errors are listed")
+    for a, b in labels.restarts:
+        for ref in (a, b):
+            if ref not in ids:
+                raise ValueError(f"{path}: restart names unknown note id '{ref}'")
     seen_note_errors: dict[str, str] = {}
     for e in labels.errors:
         ref = e.after if e.type == EXTRA else e.note_id

@@ -3,3 +3,7 @@
 piece = "e_major_rh_down"
 perfect = true
 # note RH7: restart RH7 -> RH5
+
+[[restart]]
+from = "RH7"
+to = "RH5"

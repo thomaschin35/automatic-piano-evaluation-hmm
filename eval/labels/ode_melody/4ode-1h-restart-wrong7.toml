@@ -3,3 +3,7 @@
 piece = "ode_melody"
 perfect = true
 # note RH1: restart RH7 -> RH5, first try at RH7 played D#4
+
+[[restart]]
+from = "RH7"
+to = "RH5"

@@ -17,8 +17,9 @@ flag from the second on top (a wrong note can also be late).
 | | extra | a note the score does not have |
 | When / how long | late | the note **started** late, whatever the reason: the player paused, or kept the previous key down and waited. The reason is printed beside it. |
 | | held too long | the key was **not released** when the next note was played on time. Defined and labelled, **not detected yet**. |
+| Going back | restart | the player went back to an earlier note and played on, reported as (last note before going back, note resumed at). The notes are judged on the final attempt. Labelled by writing `restart RH7 -> RH5` in a sheet comment; scored as an exact match. |
 
-"Goal F1" on the scoreboard is all of these together; "played" and "timing" are the two layers.
+"Goal F1" on the scoreboard is the first two layers together; "played" and "timing" are each layer alone. Restarts are scored on their own line.
 
 `stft_hmm_v3.py` is a note-level hidden Markov model over detected key strikes. It replaces the
 frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.

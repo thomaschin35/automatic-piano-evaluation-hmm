@@ -19,6 +19,10 @@ Rules:
   * label = correct but `played` names a different pitch -> imported as
     wrong_pitch, with a warning (the note was clearly not played as written).
   * flag: held_long | early | late (case-insensitive), allowed on any note.
+  * restart (backtracking): write "restart RH7 -> RH5" in any comment of the take
+    (last note played before going back -> note resumed at). It becomes a
+    [[restart]] table and is scored as its own class. Label the notes by the
+    final attempt.
   * Excluded takes (manifest `exclude`) are skipped.
 """
 from __future__ import annotations
@@ -26,12 +30,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import csv
 import json
+import re
 
 from eval.contract import FLAGS, NOTE_LABELS
 from eval.labels import LABELS_DIR, Take
 from eval.pieces import PieceSpec, parse_pitch
 
 ROW_LABELS = NOTE_LABELS + ("extra",)
+RESTART_RE = re.compile(r"restart\s+([A-Z]+\d+)\s*->\s*([A-Z]+\d+)", re.I)
 
 
 @dataclass
@@ -39,6 +45,7 @@ class SheetTake:
     take: Take
     errors: list[dict] = field(default_factory=list)      # TOML-ready [[error]] tables
     comments: list[str] = field(default_factory=list)
+    restarts: list[tuple[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -105,6 +112,12 @@ def parse_sheet(path: Path, takes: list[Take], pieces: dict[str, PieceSpec]) -> 
         ids = spec.note_by_id()
         st = res.takes.setdefault(take.id, SheetTake(take))
         label, flag = r["label"], r["flag"]
+        for a, b in RESTART_RE.findall(r["comment"]):
+            a, b = a.upper(), b.upper()
+            if a not in ids or b not in ids:
+                res.problems.append(f"{where}: restart names an unknown note ({a} -> {b})")
+            elif (a, b) not in st.restarts:
+                st.restarts.append((a, b))
         if label not in ROW_LABELS:
             res.problems.append(f"{where}: unknown label '{r['label']}' (use {', '.join(ROW_LABELS)})")
             continue
@@ -185,6 +198,8 @@ def render_label_file(st: SheetTake, source_name: str) -> str:
         lines.append(f"# note {c}")
     for err in st.errors:
         lines += ["", "[[error]]"] + [f"{k} = {_toml_value(v)}" for k, v in err.items()]
+    for a, b in st.restarts:
+        lines += ["", "[[restart]]", f"from = {_toml_value(a)}", f"to = {_toml_value(b)}"]
     return "\n".join(lines) + "\n"
 
 

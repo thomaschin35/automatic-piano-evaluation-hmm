@@ -23,7 +23,7 @@ from eval.pieces import all_pieces
 from eval import synth
 
 BOARD_DIR = EVAL_DIR / "scoreboards"
-CLASSES = ("error", "strict", "played", "timing", "goal", "wrong_pitch", "missed", "extra", "held_long", "late")
+CLASSES = ("error", "strict", "played", "timing", "goal", "wrong_pitch", "missed", "extra", "held_long", "late", "restart")
 # metrics that must not drop for a change to be accepted
 GUARDED = ("real.mono.goal.f1", "real.mono.strict.f1", "real.mono.clean", "real.all.strict.f1", "real.all.clean")
 
@@ -175,7 +175,7 @@ def render(board: dict) -> str:
     if m.get("n_takes"):
         L.append("  mono counts, found/false/not found: " + "  ".join(
             f"{n}={m[k]['tp']}/{m[k]['fp']}/{m[k]['fn']}" for n, k in (
-                ("wrong", "wrong_pitch"), ("missed", "missed"), ("extra", "extra"), ("late", "late"), ("held", "held_long"))))
+                ("wrong", "wrong_pitch"), ("missed", "missed"), ("extra", "extra"), ("late", "late"), ("held", "held_long"), ("restart", "restart"))))
     o = board["onset_only"]
     L += ["", f"ONSET-ONLY (pitch term off): {o['clean']}/{o['n']} clean monophonic takes still flag nothing"]
     if board["synth"]:

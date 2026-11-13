@@ -22,6 +22,8 @@ Rules:
                        held_long = the key was NOT RELEASED when the next note was played on time
                                    (it sounds under the next note). Not detected by any model yet.
                        early     = started early (not labelled or detected yet).
+  * GOING BACK      `restarts` = (last note id played before the jump, note id resumed at);
+                    the note labels above judge the final attempt.
   * Inserted notes that belong to no score note go in `extras`, positioned by
     the score note they follow (`after_note_id`, None = before the first note).
   * `capabilities` lists which error types the model can emit at all; types

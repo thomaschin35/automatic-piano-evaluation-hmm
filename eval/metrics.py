@@ -22,7 +22,7 @@ from eval.pieces import PieceSpec
 # played: the "what was played" layer = strict note labels + extras.
 # timing: the "when / how long" layer = late + held_long.
 # goal:   both layers together (wrong pitch, missed, extra, late, held too long), the project target.
-COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "played", "timing", "goal")
+COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "played", "timing", "goal", "restart")
 # full confusion: one class per note (its note label, else its first flag, else correct), plus extras
 # (a matched extra is extra/extra, an unmatched gold extra is extra/correct, a false one correct/extra)
 FULL_CLASSES = NOTE_LABELS + (EXTRA,) + FLAGS
@@ -192,6 +192,12 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
     ev.confusion_full[("correct", EXTRA)] += len(pred_x) - hits
     ev.gold_errors += len(gold_x)
     ev.pred_errors += len(pred_x)
+    # backtracking: exact (from, to) match; its own class, outside `goal` (notes are labelled by the final attempt)
+    gold_r = set(map(tuple, getattr(gold, "restarts", ())))
+    pred_r = set(map(tuple, pred.restarts)) if pred else set()
+    c["restart.tp"] += len(gold_r & pred_r)
+    c["restart.fp"] += len(pred_r - gold_r)
+    c["restart.fn"] += len(gold_r - pred_r)
     return ev
 
 
