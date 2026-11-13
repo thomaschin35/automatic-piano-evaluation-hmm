@@ -1,0 +1,13 @@
+# New-piece test (round 3): written rests. Each note is released before the rest.
+name = "rests"
+title = "C major arpeggio with rests, right hand"
+time_signature = [4, 4]
+bpm = 100
+
+[hands]
+RH = [
+  ["C4", 1], ["rest", 1], ["E4", 1], ["rest", 1],
+  ["G4", 1], ["rest", 1], ["C5", 2],
+  ["G4", 1], ["rest", 1], ["E4", 1], ["rest", 1],
+  ["C4", 4],
+]

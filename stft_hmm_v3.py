@@ -41,6 +41,17 @@ class V3Config:
     ghost_ratio: float = 0.85         # a sub-harmonic weaker than this x the note above it is a ghost
     leak_ratio: float = 0.80          # a semitone neighbour weaker than this x its neighbour is leakage
     match_min_salience: float = 0.30  # an expected pitch counts as struck from this salience up
+    # strike strength is judged against what a clear strike of that key measures in this recording
+    # (keys differ: on one piano C4 reads ~0.76 and E5 ~0.40; so do pianos, phones and players).
+    # Every salience threshold in this file is written for a key whose clear strikes read level_reference.
+    relative_levels: bool = True
+    strike_needs_sound: bool = True   # nothing is struck where the recording is at its quiet floor
+    strike_energy: float = 0.01       # ... frame energy below this share of the recording's loudness range
+    level_reference: float = 0.65     # the level the thresholds were written for
+    level_span: int = 2               # a key's level also draws on keys within this many semitones ...
+    level_prior: float = 2.0          # ... which weigh as much as this many strikes of the key itself
+    level_scale_min: float = 1.0      # quiet keys are raised (up to level_scale_max); a key is never marked down for loud neighbours
+    level_scale_max: float = 2.5
     # a key struck again while it is still ringing barely moves its onset score (the pitch is already
     # there). It is accepted from a lower onset score when the key's own level jumps and the overall
     # loudness rises with it, and then counts at full strength.
@@ -97,6 +108,7 @@ class Event:
     primary: list[tuple[int, float]]                # after removing overtones / leakage / ghosts, strongest first
     explained_by: dict[int, int] = field(default_factory=dict)   # removed pitch -> pitch that explains it
     raw_only: set = field(default_factory=set)       # pitches seen only as a jump in the spectrum
+    full: set = field(default_factory=set)           # pitches whose attack counted at full strength
 
     @property
     def salience(self) -> float:
@@ -190,18 +202,59 @@ def restruck(bundle, pitch: int, f: int, cfg: V3Config) -> bool:
     return float(en[f + 1:f + 4].max() - en[f - 4:f - 1].min()) >= cfg.restrike_energy
 
 
-def detect_events(bundle, cfg: V3Config) -> list[Event]:
+def key_scales(events: list[Event], cfg: V3Config) -> dict[int, float]:
+    """Per key, the factor that brings its strikes to level_reference in this recording.
+
+    The level of a key is read off the clear strikes found without any correction (the loudest key
+    of each event, attack at full strength). A key played once or never borrows from its neighbours
+    in the register, then from the whole recording, so one faint strike cannot set its own standard."""
+    seen: dict[int, list[float]] = {}
+    for ev in events:
+        if ev.primary and ev.pitch in ev.full and ev.pitch not in ev.raw_only:
+            seen.setdefault(ev.pitch, []).append(ev.primary[0][1])
+    if not seen:
+        return {}
+    overall = float(np.median([x for v in seen.values() for x in v]))
+
+    def around(p: int) -> float:
+        for span in (cfg.level_span, 2 * cfg.level_span + 1):
+            near = [x for q, v in seen.items() if q != p and abs(q - p) <= span for x in v]
+            if near:
+                return float(np.median(near))
+        return overall
+
+    def scale(p: int) -> float:
+        own = seen.get(p, [])
+        level = (len(own) * float(np.median(own)) if own else 0.0) + cfg.level_prior * around(p)
+        level /= len(own) + cfg.level_prior
+        return float(np.clip(cfg.level_reference / max(level, 1e-6), cfg.level_scale_min, cfg.level_scale_max))
+
+    pitches = set(seen) | {q for ev in events for q in ev.strikes}
+    return {p: scale(p) for p in pitches}
+
+
+def detect_events(bundle, cfg: V3Config, scales: dict[int, float] | None = None) -> list[Event]:
+    """Strike events. With `scales` (see key_scales) every salience is relative to its key's level."""
     T = bundle.audio.num_frames
+    full: set[tuple[int, int]] = set()                 # (frame, pitch) whose attack counted at full strength
     cands: list[tuple[int, int, float]] = []          # (frame, pitch, salience)
     raw: set[tuple[int, int]] = set()
+    energy = getattr(bundle, "frame_energy", None) if cfg.strike_needs_sound else None
+
+    def silent(f: int) -> bool:
+        # presence is a share of what sounds, so it reads high in silence too. Frame energy runs from
+        # 0 (the recording's quiet floor) to 1 (its loud passages): nothing is struck at the floor
+        return energy is not None and float(np.max(energy[f:f + 4])) < cfg.strike_energy
+
     for q in harmonic_score_pitches(bundle):
         for f in raw_strikes(bundle, q, cfg):
-            cands.append((f, q, cfg.match_min_salience))
-            raw.add((f, q))
+            if not silent(f):
+                cands.append((f, q, cfg.match_min_salience))
+                raw.add((f, q))
     for p, onset in bundle.candidate_onset_scores.items():
         pres = bundle.candidate_scores[p]
         for f in _peaks(onset, min(cfg.onset_floor, cfg.restrike_floor), cfg.same_pitch_gap):
-            if f + cfg.min_frames_after > T:
+            if f + cfg.min_frames_after > T or silent(f):
                 continue
             gain = float(np.clip((float(onset[f]) - cfg.onset_floor) / (cfg.onset_full - cfg.onset_floor), 0.0, 1.0))
             if gain < 1.0 and restruck(bundle, p, f, cfg):
@@ -211,6 +264,8 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
             s = gain * float(np.median(pres[f + 1:min(T, f + 1 + cfg.presence_window)]))
             if s >= cfg.min_salience:
                 cands.append((f, p, s))
+                if gain >= 1.0:
+                    full.add((f, p))
     cands.sort()
     groups: list[list[tuple[int, int, float]]] = []
     for c in cands:
@@ -252,8 +307,14 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
             if src is not None:
                 kept.remove(q)
                 explained[q] = src
+        # overtones, ghosts and leakage were sorted out on the measured levels; from here on a strike
+        # is worth its level relative to that key
+        if scales:
+            seen_raw = {q for q in strikes if q not in confirmed}       # those carry a nominal level already
+            strikes = {q: s * (1.0 if q in seen_raw else scales.get(q, 1.0)) for q, s in strikes.items()}
         primary = sorted(((q, strikes[q]) for q in kept), key=lambda x: -x[1])
-        events.append(Event(frames[primary[0][0]], strikes, primary, explained, set(strikes) - confirmed))
+        events.append(Event(frames[primary[0][0]], strikes, primary, explained, set(strikes) - confirmed,
+                            {q for q in strikes if (frames[q], q) in full}))
     return events
 
 
@@ -414,6 +475,8 @@ def analyze(bundle, cfg: V3Config | None = None, beats_per_measure: float = 4.0,
     cfg = cfg or V3Config()
     spf = bundle.audio.seconds_per_frame
     events = detect_events(bundle, cfg)
+    if cfg.relative_levels:
+        events = detect_events(bundle, cfg, key_scales(events, cfg))
     positions = score_positions(bundle, beats_per_measure, pickup_beats)
     E = len(events)
     back = back_costs(positions, cfg) if backtracking and positions else None

@@ -70,3 +70,47 @@ class V3OnFakePerformance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RelativeStrikeLevels(unittest.TestCase):
+    """Strike strength is judged against that key's level in the recording, not a fixed number."""
+
+    @staticmethod
+    def events(levels):
+        import stft_hmm_v3 as m
+        return m, [m.Event(10 * i, {p: s}, [(p, s)], full={p}) for i, (p, s) in enumerate(levels)]
+
+    def test_quiet_key_is_raised_and_loud_key_is_left_alone(self):
+        m, evs = self.events([(60, 0.75)] * 3 + [(76, 0.29), (75, 0.30), (76, 0.31)])
+        cfg = m.V3Config()
+        s = m.key_scales(evs, cfg)
+        self.assertEqual(s[60], 1.0)
+        self.assertGreaterEqual(0.29 * s[76], cfg.sub_min_salience)      # now a clear strike of that key
+
+    def test_one_faint_strike_cannot_set_its_own_standard(self):
+        m, evs = self.events([(71, 0.70)] * 3 + [(69, 0.70)] * 2 + [(72, 0.20)])
+        cfg = m.V3Config()
+        self.assertLess(0.20 * m.key_scales(evs, cfg)[72], cfg.match_min_salience)
+
+    def test_nothing_is_struck_in_silence(self):
+        import copy
+        import stft_hmm_v3 as m
+        spec = load_piece("ode_melody")
+        bundle = copy.copy(fake_bundle(spec, frames_per_note=20, in_rhythm=True))
+        cfg = m.V3Config()
+        n = len(m.detect_events(bundle, cfg))
+        self.assertGreater(n, 0)
+        bundle.frame_energy = bundle.frame_energy * 0.0
+        self.assertEqual(m.detect_events(bundle, cfg), [])
+
+
+class NewPieceShapes(unittest.TestCase):
+    """Perfectly heard notes of pieces v3 was never tuned on: rests, eighth notes, other registers."""
+
+    def test_clean_performance_of_each_round3_piece_has_no_flags(self):
+        adapter = get_adapter("v3")
+        for name in ("twinkle", "buns", "frere", "c_low", "c_high", "rests"):
+            spec = load_piece(name)
+            pred = adapter.predict_bundle(fake_bundle(spec, frames_per_note=20, in_rhythm=True), spec)
+            bad = [(n.note_id, n.label, sorted(n.flags)) for n in pred.notes if n.label != "correct" or n.flags]
+            self.assertEqual((bad, pred.extras, pred.restarts), ([], [], []), name)

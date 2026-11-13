@@ -1,0 +1,11 @@
+# New-piece test (round 3): low register, one octave below the C major scale already tested.
+name = "c_low"
+title = "C major scale from C3, up and down, one hand"
+time_signature = [4, 4]
+bpm = 100
+
+[hands]
+RH = [
+  ["C3", 1], ["D3", 1], ["E3", 1], ["F3", 1], ["G3", 1], ["A3", 1], ["B3", 1], ["C4", 1],
+  ["B3", 1], ["A3", 1], ["G3", 1], ["F3", 1], ["E3", 1], ["D3", 1], ["C3", 2],
+]

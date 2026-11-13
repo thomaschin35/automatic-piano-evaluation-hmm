@@ -13,7 +13,7 @@
 # Put more specific rules first: the first match wins.
 
 # Folders scanned for new recordings (relative to the repo root).
-folders = ["recordings/eval-interviews/raw", "recordings/person3", "recordings/round2"]
+folders = ["recordings/eval-interviews/raw", "recordings/person3", "recordings/round2", "recordings/round3"]
 
 [[rule]]
 key = "cmajor"
@@ -60,3 +60,34 @@ piece = "canon_lh"
 key = "can"
 hands = "2h"
 piece = "canon_both"
+
+# round 3: pieces the model was never tuned on
+[[rule]]
+key = "twinkle"
+hands = "1h"
+piece = "twinkle"
+
+[[rule]]
+key = "buns"
+hands = "1h"
+piece = "buns"
+
+[[rule]]
+key = "frere"
+hands = "1h"
+piece = "frere"
+
+[[rule]]
+key = "clow"
+hands = "1h"
+piece = "c_low"
+
+[[rule]]
+key = "chigh"
+hands = "1h"
+piece = "c_high"
+
+[[rule]]
+key = "rests"
+hands = "1h"
+piece = "rests"

@@ -19,7 +19,9 @@ def fake_bundle(spec, frames_per_note=10, in_rhythm=False):
     notes = spec.notes()
     lengths = [int(round(frames_per_note * ((n.end_beat - n.start_beat) if in_rhythm else 1.0))) for n in notes]
     starts = [sum(lengths[:i]) for i in range(len(notes))]
-    T = sum(lengths)
+    if in_rhythm:                                          # written rests keep their time (silence)
+        starts = [int(round(frames_per_note * (n.start_beat - notes[0].start_beat))) for n in notes]
+    T = starts[-1] + lengths[-1]
     pres = {p: np.zeros(T) for p in range(28, 97)}
     ons = {p: np.zeros(T) for p in range(28, 97)}
     for n, s0, ln in zip(notes, starts, lengths):
