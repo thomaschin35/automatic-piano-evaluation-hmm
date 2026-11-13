@@ -2,8 +2,14 @@
 # Edit the shared sheet and re-import rather than editing this file.
 piece = "ode_melody"
 perfect = true
-# note RH1: restart RH7 -> RH5, first try at RH7 played D#4
+# note RH1: restart RH7 -> RH5, attempt 1: RH7 wrong_pitch played D#4
 
 [[restart]]
 from = "RH7"
 to = "RH5"
+
+[[earlier]]
+attempt = 1
+note = "RH7"
+type = "wrong_pitch"
+played = "D#4"

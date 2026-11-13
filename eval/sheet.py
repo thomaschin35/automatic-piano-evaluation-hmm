@@ -23,6 +23,10 @@ Rules:
     (last note played before going back -> note resumed at). It becomes a
     [[restart]] table and is scored as its own class. Label the notes by the
     final attempt.
+  * a mistake in an attempt the player then abandoned (went back and replayed):
+    write "attempt 1: RH7 wrong_pitch played D#4" or "attempt 1: RH9 missed" in any
+    comment of the take (attempt 1 = before the first restart, 2 = before the second).
+    It becomes an [[earlier]] table; the note rows still describe the final attempt.
   * Excluded takes (manifest `exclude`) are skipped.
 """
 from __future__ import annotations
@@ -38,6 +42,7 @@ from eval.pieces import PieceSpec, parse_pitch
 
 ROW_LABELS = NOTE_LABELS + ("extra",)
 RESTART_RE = re.compile(r"restart\s+([A-Z]+\d+)\s*->\s*([A-Z]+\d+)", re.I)
+EARLIER_RE = re.compile(r"attempt\s*(\d+)\s*:\s*([A-Z]+\d+)\s+(wrong_pitch|wrong|missed)(?:\s+played\s+([A-G][#b]?\d))?", re.I)
 
 
 @dataclass
@@ -46,6 +51,7 @@ class SheetTake:
     errors: list[dict] = field(default_factory=list)      # TOML-ready [[error]] tables
     comments: list[str] = field(default_factory=list)
     restarts: list[tuple[str, str]] = field(default_factory=list)
+    earlier: list[dict] = field(default_factory=list)     # TOML-ready [[earlier]] tables
 
 
 @dataclass
@@ -118,6 +124,15 @@ def parse_sheet(path: Path, takes: list[Take], pieces: dict[str, PieceSpec]) -> 
                 res.problems.append(f"{where}: restart names an unknown note ({a} -> {b})")
             elif (a, b) not in st.restarts:
                 st.restarts.append((a, b))
+        for att, nid, kind, pl in EARLIER_RE.findall(r["comment"]):
+            nid, kind = nid.upper(), ("wrong_pitch" if kind.lower().startswith("wrong") else "missed")
+            item = {"attempt": int(att), "note": nid, "type": kind}
+            if pl:
+                item["played"] = pl
+            if nid not in ids:
+                res.problems.append(f"{where}: earlier-attempt mistake names an unknown note ({nid})")
+            elif item not in st.earlier:
+                st.earlier.append(item)
         if label not in ROW_LABELS:
             res.problems.append(f"{where}: unknown label '{r['label']}' (use {', '.join(ROW_LABELS)})")
             continue
@@ -200,6 +215,8 @@ def render_label_file(st: SheetTake, source_name: str) -> str:
         lines += ["", "[[error]]"] + [f"{k} = {_toml_value(v)}" for k, v in err.items()]
     for a, b in st.restarts:
         lines += ["", "[[restart]]", f"from = {_toml_value(a)}", f"to = {_toml_value(b)}"]
+    for e in st.earlier:
+        lines += ["", "[[earlier]]"] + [f"{k} = {_toml_value(v)}" for k, v in e.items()]
     return "\n".join(lines) + "\n"
 
 

@@ -18,6 +18,7 @@ flag from the second on top (a wrong note can also be late).
 | When / how long | late | the note **started** late, whatever the reason: the player paused, or kept the previous key down and waited. The reason is printed beside it. |
 | | held too long | the key was **not released** when the next note was played on time. Defined and labelled, **not detected yet**. |
 | Going back | restart | the player went back to an earlier note and played on, reported as (last note before going back, note resumed at). The notes are judged on the final attempt. Labelled by writing `restart RH7 -> RH5` in a sheet comment; scored as an exact match. |
+| | before-restart mistake | what went wrong in an attempt the player then abandoned, e.g. "attempt 1: RH7 wrong pitch, played D#4": usually the reason they went back. Labelled by writing `attempt 1: RH7 wrong_pitch played D#4` (or `attempt 1: RH9 missed`) in a sheet comment; scored on (attempt, note, label). |
 
 "Goal F1" on the scoreboard is the first two layers together; "played" and "timing" are each layer alone. Restarts are scored on their own line.
 
@@ -43,6 +44,18 @@ frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
    60% of that note's strength is reported as an extra. A faint wrong key (down to the strength
    at which a right key would count) can stand in for a note at a higher cost, instead of the
    note being called missed.
+5. **Going back.** A restart is one more move in the alignment: from the note just played back to
+   an earlier one (at least one note back; striking the same note again is an extra), costing 5
+   to a bar start and 7 elsewhere. It wins when the replayed notes match the score better than
+   any reading without it. The take starts in attempt 1 and each restart starts the next; every
+   note is judged by the last attempt that reached it, and the mistakes of earlier attempts are
+   kept and printed beside the restart ("WENT BACK from note 7 to note 5, after: note 7 WRONG NOTE
+   (played D#4)").
+6. **Search window.** The alignment only considers moves a player makes: a forward jump over at
+   most 16 notes, and a restart at most 4 bars back or to the very beginning. Results are
+   identical to the exhaustive search on every take; a 480-note piece aligns in about 3 s instead
+   of about 6 minutes. Each strike still scans every position, so time grows faster than the
+   piece for very long pieces (about 50 s at 1,900 notes).
 
 ```bash
 .venv/bin/python stft_hmm_v3.py --audio recordings/eval-interviews/processed/2ode-1h-wrong.wav --model ode_melody

@@ -23,7 +23,7 @@ from eval.pieces import all_pieces
 from eval import synth
 
 BOARD_DIR = EVAL_DIR / "scoreboards"
-CLASSES = ("error", "strict", "played", "timing", "goal", "wrong_pitch", "missed", "extra", "held_long", "late", "restart")
+CLASSES = ("error", "strict", "played", "timing", "goal", "wrong_pitch", "missed", "extra", "held_long", "late", "restart", "earlier")
 # metrics that must not drop for a change to be accepted
 GUARDED = ("real.mono.goal.f1", "real.mono.strict.f1", "real.mono.clean", "real.all.strict.f1", "real.all.clean")
 
@@ -71,7 +71,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
         bundle = load_bundle(audio, t.piece)
         ev = evaluate_take(t.id, spec, labels, _predict(adapter, bundle, spec, overrides))
         real.append(ev)
-        if labels.perfect and t.piece in synth.MONO_PIECES:
+        if labels.perfect and not labels.restarts and t.piece in synth.MONO_PIECES:   # played straight through
             clean_mono.append((t, spec, bundle))
     mono = [e for e in real if e.piece in synth.MONO_PIECES]
     board = {"model": adapter.name, "real": {
@@ -116,7 +116,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
                 c = ev.counts
                 exact[case.kind] += int(not ev.failed and sum(
                     c[f"{k}.{x}"] for k in ("strict", "extra", "held_long", "late") for x in ("fp", "fn")) == 0)
-                if case.kind == "restart" and pred is not None:
+                if case.kind in ("restart", "restart_wrong") and pred is not None:
                     located[case.kind] += int(case.meta["restart"] in [tuple(r) for r in pred.restarts])
         for k, evs in per_kind.items():
             if not evs:
@@ -124,7 +124,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
             b = _block(evs)
             b.update(n_cases=len(evs), exact=exact[k] / len(evs),
                      false_flags=sum(b[k]["fp"] for k in ("strict", "extra", "held_long", "late")) / len(evs))
-            if k == "restart":
+            if k in ("restart", "restart_wrong"):
                 b["located"] = located[k] / len(evs)
             board["synth"][k] = b
     board["seconds"] = round(time.time() - t0, 1)
@@ -177,7 +177,8 @@ def render(board: dict) -> str:
     if m.get("n_takes"):
         L.append("  mono counts, found/false/not found: " + "  ".join(
             f"{n}={m[k]['tp']}/{m[k]['fp']}/{m[k]['fn']}" for n, k in (
-                ("wrong", "wrong_pitch"), ("missed", "missed"), ("extra", "extra"), ("late", "late"), ("held", "held_long"), ("restart", "restart"))))
+                ("wrong", "wrong_pitch"), ("missed", "missed"), ("extra", "extra"), ("late", "late"), ("held", "held_long"), ("restart", "restart"),
+                ("before-restart mistakes", "earlier"))))
     o = board["onset_only"]
     L += ["", f"ONSET-ONLY (pitch term off): {o['clean']}/{o['n']} clean monophonic takes still flag nothing"]
     if board["synth"]:
@@ -185,6 +186,8 @@ def render(board: dict) -> str:
         for k, b in board["synth"].items():
             s = b["strict"]
             loc = f" | restart located {_f(b['located'])}" if "located" in b else ""
+            if b.get("earlier", {}).get("recall") is not None:
+                loc += f" | before-restart mistake P {_f(b['earlier']['precision'])} R {_f(b['earlier']['recall'])}"
             L.append(f"  {k:<26} {b['n_cases']:>6} | {_f(b['exact'])} |      {_f(s['precision'])} {_f(s['recall'])} {_f(s['f1'])} |"
                      f"  {_f(b['extra']['recall'])}   {_f(b['late']['recall'])} | {b['false_flags']:.2f}{loc}")
     if board["real_errors"]:

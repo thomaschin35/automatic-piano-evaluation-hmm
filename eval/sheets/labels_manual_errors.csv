@@ -1842,7 +1842,7 @@ ode_harm_1wrongH,ode_harmony,RH15,D4,4,3,correct,,,
 4ode-1h-miss-g5-drop,ode_melody,RH13,E4,4,1,correct,,,
 4ode-1h-miss-g5-drop,ode_melody,RH14,D4,4,2.5,correct,,,
 4ode-1h-miss-g5-drop,ode_melody,RH15,D4,4,3,correct,,,
-4ode-1h-restart-wrong7,ode_melody,RH1,E4,1,1,correct,,,"restart RH7 -> RH5, first try at RH7 played D#4"
+4ode-1h-restart-wrong7,ode_melody,RH1,E4,1,1,correct,,,"restart RH7 -> RH5, attempt 1: RH7 wrong_pitch played D#4"
 4ode-1h-restart-wrong7,ode_melody,RH2,E4,1,2,correct,,,
 4ode-1h-restart-wrong7,ode_melody,RH3,F4,1,3,correct,,,
 4ode-1h-restart-wrong7,ode_melody,RH4,G4,1,4,correct,,,

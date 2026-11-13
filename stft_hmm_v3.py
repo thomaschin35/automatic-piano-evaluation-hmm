@@ -99,6 +99,10 @@ class V3Config:
     restrike_report_ratio: float = 0.6   # a fainter unmatched strike is still an extra when it repeats the
                                          # neighbouring note's key at this fraction of that note's strength
     tempo_passes: int = 2
+    # --- search window: the alignment only considers moves a player makes, so its work grows with
+    # the length of the piece instead of with its square
+    max_skip: int = 16                # a forward jump passes over at most this many notes
+    back_bars: int = 4                # a restart goes back at most this many bars, or to the very beginning
 
 
 @dataclass
@@ -329,14 +333,20 @@ def score_positions(bundle, beats_per_measure: float = 4.0, pickup_beats: float 
 
 
 def back_costs(positions: list[Position], cfg: V3Config) -> np.ndarray:
-    """[j', j] cost of resuming at an earlier position j after playing j' (inf where not allowed).
-    Learners restart where the music restarts: at a bar line far more often than mid-bar."""
+    """Cost of resuming at each earlier position j (indexed by j). Learners restart where the music
+    restarts: at a bar line far more often than mid-bar. Which jumps are allowed at all (at least
+    back_min_notes replayed, within back_bars bars or to the beginning) is decided in align()."""
+    return np.where([p.bar_start for p in positions], cfg.back_cost_bar, cfg.back_cost_any).astype(float)
+
+
+def back_window(positions: list[Position], cfg: V3Config) -> np.ndarray:
+    """[j', j] True where a restart from j' to the earlier position j is allowed. Dense: for tests."""
     J = len(positions)
     jj = np.arange(J)
-    target = np.where([p.bar_start for p in positions], cfg.back_cost_bar, cfg.back_cost_any)
-    cost = np.broadcast_to(target[None, :], (J, J)).copy()
-    cost[jj[:, None] - jj[None, :] < cfg.back_min_notes - 1] = np.inf    # replaying j..j' is j'-j+1 notes
-    return cost
+    bar = np.cumsum([p.bar_start for p in positions])
+    k = jj[:, None] - jj[None, :]                                       # notes gone back, j' - j
+    near = (bar[:, None] - bar[None, :] <= cfg.back_bars) | (jj[None, :] == 0)
+    return (k >= max(1, cfg.back_min_notes - 1)) & near
 
 
 # ---------------------------------------------------------------- emission
@@ -381,10 +391,117 @@ def _timing(ioi_s: float, beats: np.ndarray, spb: float, cfg: V3Config) -> np.nd
     return np.minimum(cfg.timing_weight * r * r, cfg.timing_cap)
 
 
+def _emissions(events: list[Event], positions: list[Position], cfg: V3Config) -> np.ndarray:
+    """[e, j] emission cost. It depends only on the pitches a position expects, so it is computed
+    once per distinct pitch set (a long piece reuses a few dozen of them)."""
+    cols: dict[tuple, np.ndarray] = {}
+    for pos in positions:
+        if pos.pitches not in cols:
+            cols[pos.pitches] = np.array([emission_cost(ev, pos, cfg) for ev in events])
+    return np.stack([cols[pos.pitches] for pos in positions], axis=1)
+
+
+def _backtrack(bp: np.ndarray, total: np.ndarray) -> tuple[list[Match], float]:
+    e, j = np.unravel_index(int(np.argmin(total)), total.shape)
+    cost = float(total[e, j])
+    path = []
+    while e >= 0:
+        e0, j0 = bp[e, j]
+        kind = "next" if e0 < 0 or j == j0 + 1 else ("back" if j <= j0 else "skip")
+        path.append(Match(int(e), int(j), kind))
+        e, j = int(e0), int(j0)
+    return path[::-1], cost
+
+
 def align(events: list[Event], positions: list[Position], cfg: V3Config,
           spb: np.ndarray, spf: float, back_cost=None) -> tuple[list[Match], float]:
     """Cheapest explanation of the events by the score. dp[e, j] = best cost of a path whose last
-    matched pair is (event e, position j)."""
+    matched pair is (event e, position j).
+
+    Only the moves a player makes are searched: the next note, a forward jump over at most
+    max_skip notes, and (with back_cost, from back_costs()) a restart at least back_min_notes back
+    and at most back_bars bars back, or to the very beginning. Each event therefore looks at a
+    fixed number of earlier positions, and the work grows with the length of the piece. For pieces
+    shorter than the window this is exactly align_dense()."""
+    E, J = len(events), len(positions)
+    if E == 0 or J == 0:
+        return [], float(min(J * cfg.skip_cost, cfg.stop_cost) if J else 0.0)
+    beat = np.array([p.beat for p in positions], dtype=float)
+    t = np.array([ev.frame for ev in events]) * spf
+    emit = _emissions(events, positions, cfg)
+    xc = np.array([extra_cost(ev, cfg) for ev in events])
+    xcum = np.concatenate([[0.0], np.cumsum(xc)])
+    jj = np.arange(J)
+    own_note = np.diff(beat, append=beat[-1] + 1.0)                     # beats of each note itself
+    kmin = max(1, cfg.back_min_notes - 1)
+    back = back_cost is not None and J > 1
+    bar = np.cumsum([p.bar_start for p in positions])
+
+    # columns are moves "from j' = j - d", ordered by increasing j' (ties go to the earliest j',
+    # as in align_dense): forward jumps d = F..1, then restarts d = -kmin..-K
+    F = min(cfg.max_skip + 1, J - 1)
+    K = 0
+    if back:
+        reach = np.searchsorted(bar, bar + cfg.back_bars, side="right") - 1 - jj   # last j' per target
+        K = int(max(0, reach.max()))
+    offs = np.concatenate([np.arange(F, 0, -1), -np.arange(kmin, K + 1)]).astype(int)
+    S = jj[:, None] - offs[None, :]                                      # [j, c] source position j'
+    valid = (S >= 0) & (S < J)
+    Sc = np.clip(S, 0, J - 1)
+    nf = F                                                               # forward columns come first
+    skips = offs[:nf] - 1
+    skip_c = np.minimum(skips * cfg.skip_cost, cfg.jump_cost + skips * cfg.jump_step)[None, :]
+    skipped = (skips >= 1)[None, :]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        log_dbeat = np.log(beat[:, None] - beat[Sc[:, :nf]])            # written beats between j' and j
+        log_own = np.log(own_note[Sc[:, :nf]])
+    tr_back = np.full((J, offs.size - nf), np.inf)
+    if back:
+        ok = valid[:, nf:] & (bar[Sc[:, nf:]] - bar[:, None] <= cfg.back_bars)
+        tr_back[ok] = np.broadcast_to(back_cost[:, None], ok.shape)[ok]
+
+    def timing(ioi_s: float, log_beats: np.ndarray, spb_e: float) -> np.ndarray:
+        r = np.log(max(ioi_s, 1e-3)) - np.log(spb_e) - log_beats
+        return np.minimum(cfg.timing_weight * r * r, cfg.timing_cap)
+
+    dp = np.full((E, J), np.inf)
+    bp = np.full((E, J, 2), -1, dtype=int)
+    start = np.minimum(jj * cfg.skip_cost, cfg.jump_cost + jj * cfg.jump_step)
+    for e in range(E):
+        dp[e] = xcum[e] + start + emit[e]
+        for e0 in range(max(0, e - 1 - cfg.max_extras), e):
+            between = xcum[e] - xcum[e0 + 1]
+            ioi = t[e] - t[e0]
+            tr_f = skip_c + timing(ioi, log_dbeat, spb[e])                # time of the skipped notes kept
+            tr_f = np.where(skipped, np.minimum(tr_f, skip_c + cfg.skip_time_slack
+                                                + timing(ioi, log_own, spb[e])), tr_f)   # ... or dropped
+            if e0 < e - 1:                           # extras in between: they may have added their own time
+                tr_f = np.minimum(tr_f, skip_c + cfg.extra_time_slack + timing(t[e] - t[e - 1], log_dbeat, spb[e]))
+            cand = dp[e0][Sc] + np.concatenate([tr_f, tr_back], axis=1) + between
+            cand[~valid] = np.inf
+            c = np.argmin(cand, axis=1)
+            best = cand[jj, c] + emit[e]
+            j0 = S[jj, c]
+            if back:                                 # back to the very beginning, from anywhere
+                c0 = dp[e0][kmin:] + back_cost[0] + between
+                i0 = int(np.argmin(c0))
+                best[0], j0[0] = c0[i0] + emit[e][0], kmin + i0
+            better = best < dp[e]
+            dp[e][better] = best[better]
+            bp[e][better, 0] = e0
+            bp[e][better, 1] = j0[better]
+    left = J - 1 - jj
+    end = np.minimum(left * cfg.skip_cost, cfg.stop_cost + left * cfg.jump_step)
+    total = dp + (xcum[E] - xcum[1:E + 1])[:, None] + end[None, :]
+    if not np.isfinite(total.min()):
+        return [], float(xcum[E] + min(J * cfg.skip_cost, cfg.stop_cost))
+    return _backtrack(bp, total)
+
+
+def align_dense(events: list[Event], positions: list[Position], cfg: V3Config,
+                spb: np.ndarray, spf: float, back_cost=None) -> tuple[list[Match], float]:
+    """Reference: every position may follow every position (work grows with the square of the piece).
+    back_cost here is a dense [j', j] matrix (inf where a restart is not allowed). Kept for tests."""
     E, J = len(events), len(positions)
     if E == 0 or J == 0:
         return [], float(min(J * cfg.skip_cost, cfg.stop_cost) if J else 0.0)
@@ -513,6 +630,11 @@ class Report:
     extras: list[tuple[int | None, int, int]]          # (position index it follows or None, pitch, frame)
     restarts: list[tuple[int, int]]                    # (position before the jump, position resumed at)
     visits: dict[int, list[int]]                       # position index -> events matched to it, in order
+    by_event: dict[int, list[PitchVerdict]] = field(default_factory=dict)   # matched event -> its verdicts
+    attempt_of: dict[int, int] = field(default_factory=dict)               # matched event -> attempt (1, 2, ...)
+    # mistakes in an attempt the player abandoned by going back: (attempt, position index, verdict).
+    # `verdicts` judge each note by the last attempt that reached it.
+    earlier: list[tuple[int, int, PitchVerdict]] = field(default_factory=list)
 
 
 def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg: V3Config) -> tuple[list[PitchVerdict], list[int]]:
@@ -568,7 +690,7 @@ def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
     for a, c in zip(an.matches, an.matches[1:]):
         if c.kind == "back" or c.position <= a.position:
             continue                                   # a restart explains its own time
-        va, vc = rep.verdicts[a.position], rep.verdicts[c.position]
+        va, vc = rep.by_event[a.event], rep.by_event[c.event]          # this visit, not the note's last one
         if any(v.corrected for v in vc):
             continue                                   # so does a wrong key pressed first
         if any(an.events[k].salience >= cfg.extra_report_salience or an.events[k].frame in extra_frames
@@ -591,6 +713,10 @@ def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
 def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     """Turn the alignment into verdicts.
 
+    Attempts: the take starts in attempt 1 and every restart starts the next one. Each note is
+    judged by the last attempt that reached it (played it, or skipped over it); what went wrong in
+    earlier attempts is kept in `earlier`, so a player who went back is told what made them stop.
+
     An unmatched event is one of three things: a re-strike of the note just played or a double
     strike of the note that follows (an extra note); a wrong key pressed before the right one
     (the following note is reported as wrong pitch, corrected); or noise (too faint to report)."""
@@ -600,6 +726,8 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     extras, restarts = [], []
     matched = {m.event: m for m in an.matches}
     last_pos, prev_pitches, last_ev = None, (), None
+    attempt, by_event, attempt_of = 1, {}, {}
+    touches: dict[int, list[tuple[int, list[PitchVerdict] | None]]] = {}   # position -> (attempt, verdicts or None = skipped)
     pending: list[Event] = []                          # unmatched events since the last match that may be notes
 
     def clear(x: Event, neighbours: list[Event]) -> bool:
@@ -617,6 +745,11 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
         pos = an.positions[m.position]
         if m.kind == "back" and last_pos is not None:
             restarts.append((last_pos, m.position))
+            attempt += 1
+        passed = range(last_pos + 1, m.position) if last_pos is not None and m.position > last_pos + 1 else \
+            range(0, m.position) if last_pos is None else range(0)
+        for q in passed:                                 # notes jumped over in this attempt
+            touches.setdefault(q, []).append((attempt, None))
         vs, _ = verdicts_for(ev, pos, prev_pitches, cfg)
         prev_set = set(an.positions[last_pos].pitches) if last_pos is not None else set()
         for x in pending:
@@ -628,15 +761,23 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
             else:
                 target.label, target.played, target.corrected = "wrong_pitch", x.pitch, True
         pending = []
-        verdicts[m.position] = vs                                          # the last visit decides
+        by_event[e], attempt_of[e] = vs, attempt
+        touches.setdefault(m.position, []).append((attempt, vs))
         visits.setdefault(m.position, []).append(e)
         last_pos, last_ev = m.position, ev
         prev_pitches = tuple(v.played for v in vs if v.played is not None)
     extras += [(last_pos, x.pitch, x.frame) for x in pending if clear(x, [last_ev])]
+    earlier: list[tuple[int, int, PitchVerdict]] = []
     for pos in an.positions:
-        if pos.index not in verdicts:
-            verdicts[pos.index] = [PitchVerdict(p, "missed") for p in pos.pitches]
-    rep = Report(verdicts, extras, restarts, visits)
+        ts = touches.get(pos.index, [])
+        for att, vs in ts[:-1]:                          # every attempt but the last that reached this note
+            for v in (vs if vs is not None else [PitchVerdict(p, "missed") for p in pos.pitches]):
+                if v.label != "correct":
+                    earlier.append((att, pos.index, v))
+        last = ts[-1][1] if ts else None
+        verdicts[pos.index] = last if last is not None else [PitchVerdict(p, "missed") for p in pos.pitches]
+    earlier.sort(key=lambda x: (x[0], x[1]))
+    rep = Report(verdicts, extras, restarts, visits, by_event, attempt_of, earlier)
     if bundle is not None:
         timing_flags(an, rep, bundle, cfg)
     return rep
@@ -661,8 +802,11 @@ def print_report(an: Analysis, rep: Report) -> None:
     for after, pitch, frame in rep.extras:
         where = f"after note {after + 1}" if after is not None else "before the first note"
         print(f"  EXTRA {midi_to_note_name(pitch)} at {frame * spf:.2f}s ({where})")
-    for a, b in rep.restarts:
-        print(f"  WENT BACK from note {a + 1} to note {b + 1}")
+    for k, (a, b) in enumerate(rep.restarts, 1):
+        why = [f"note {pi + 1} " + (f"WRONG NOTE (played {midi_to_note_name(v.played or 0)})" if v.label == "wrong_pitch"
+                                    else "MISSED") for att, pi, v in rep.earlier if att == k]
+        print(f"  WENT BACK from note {a + 1} to note {b + 1}"
+              + (f", after: {'; '.join(why)}" if why else " (no mistake heard before going back)"))
     print("=" * 78)
 
 

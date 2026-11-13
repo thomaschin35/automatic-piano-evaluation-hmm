@@ -22,7 +22,7 @@ from eval.pieces import PieceSpec
 # played: the "what was played" layer = strict note labels + extras.
 # timing: the "when / how long" layer = late + held_long.
 # goal:   both layers together (wrong pitch, missed, extra, late, held too long), the project target.
-COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "played", "timing", "goal", "restart")
+COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "played", "timing", "goal", "restart", "earlier")
 # full confusion: one class per note (its note label, else its first flag, else correct), plus extras
 # (a matched extra is extra/extra, an unmatched gold extra is extra/correct, a false one correct/extra)
 FULL_CLASSES = NOTE_LABELS + (EXTRA,) + FLAGS
@@ -198,6 +198,12 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
     c["restart.tp"] += len(gold_r & pred_r)
     c["restart.fp"] += len(pred_r - gold_r)
     c["restart.fn"] += len(gold_r - pred_r)
+    # mistakes in an abandoned attempt (what made the player go back): exact (attempt, note, label)
+    gold_e = {(e.attempt, e.note_id, e.type) for e in getattr(gold, "earlier", ())}
+    pred_e = {(e.attempt, e.note_id, e.label) for e in getattr(pred, "earlier", ())} if pred else set()
+    c["earlier.tp"] += len(gold_e & pred_e)
+    c["earlier.fp"] += len(pred_e - gold_e)
+    c["earlier.fn"] += len(gold_e - pred_e)
     return ev
 
 

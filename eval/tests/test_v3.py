@@ -55,6 +55,22 @@ class V3OnFakePerformance(unittest.TestCase):
             self.assertIn(c.meta["restart"], [tuple(r) for r in pred.restarts], str(c.meta))
             self.assertEqual(ev.pred_errors, 0, str(c.meta))
 
+    def test_mistake_before_a_restart_is_kept(self):
+        """A wrong key, then going back: the restart is located and the wrong key is reported as a
+        mistake of attempt 1, while the replayed (final) notes are all correct."""
+        cases = self.run_kind("restart_wrong")
+        self.assertTrue(cases)
+        for c, pred, ev in cases:
+            self.assertIn(c.meta["restart"], [tuple(r) for r in pred.restarts], str(c.meta))
+            g = c.gold.earlier[0]
+            self.assertIn((1, g.note_id, "wrong_pitch", g.played),
+                          [(e.attempt, e.note_id, e.label, e.played_pitch) for e in pred.earlier], str(c.meta))
+            self.assertEqual([n.note_id for n in pred.notes if n.label != "correct"], [], str(c.meta))
+
+    def test_clean_restart_reports_no_earlier_mistake(self):
+        for c, pred, ev in self.run_kind("restart"):
+            self.assertEqual(pred.earlier, [], str(c.meta))
+
     def test_silent_gap_is_late(self):
         for c, pred, ev in self.run_kind("gap"):
             self.assertEqual((ev.counts["late.tp"], ev.counts["late.fp"], ev.counts["late.fn"]), (1, 0, 0), str(c.meta))
@@ -114,3 +130,30 @@ class NewPieceShapes(unittest.TestCase):
             pred = adapter.predict_bundle(fake_bundle(spec, frames_per_note=20, in_rhythm=True), spec)
             bad = [(n.note_id, n.label, sorted(n.flags)) for n in pred.notes if n.label != "correct" or n.flags]
             self.assertEqual((bad, pred.extras, pred.restarts), ([], [], []), name)
+
+
+class WindowedAlignment(unittest.TestCase):
+    """align() searches only the moves a player makes; it must give exactly the exhaustive answer."""
+
+    def test_matches_exhaustive_search_on_a_long_piece_with_restarts(self):
+        import dataclasses
+        import numpy as np
+        import stft_hmm_v3 as m
+        spec = load_piece("ode_melody")
+        bundle = fake_bundle(spec, frames_per_note=20, in_rhythm=True)
+        cfg = dataclasses.replace(m.V3Config(), max_skip=10_000)       # forward window covers everything
+        ev = m.detect_events(bundle, cfg)
+        pos = m.score_positions(bundle)
+        span = ev[-1].frame + 20
+        reps = 6
+        # the piece played 6 times in a row = one long piece; each new copy reads as a restart
+        E = [dataclasses.replace(e, frame=e.frame + k * span) for k in range(reps) for e in ev]
+        P = [m.Position(k * len(pos) + q.index, q.beat + k * 16, q.pitches, q.segment_index, q.bar_start)
+             for k in range(reps) for q in pos]
+        spb = np.full(len(E), 0.5)
+        spf = bundle.audio.seconds_per_frame
+        got, cost = m.align(E, P, cfg, spb, spf, m.back_costs(P, cfg))
+        dense = np.where(m.back_window(P, cfg), m.back_costs(P, cfg)[None, :], np.inf)
+        want, want_cost = m.align_dense(E, P, cfg, spb, spf, dense)
+        self.assertEqual([(x.event, x.position, x.kind) for x in got], [(x.event, x.position, x.kind) for x in want])
+        self.assertAlmostEqual(cost, want_cost, places=9)

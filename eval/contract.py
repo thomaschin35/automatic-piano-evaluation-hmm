@@ -23,7 +23,8 @@ Rules:
                                    (it sounds under the next note). Not detected by any model yet.
                        early     = started early (not labelled or detected yet).
   * GOING BACK      `restarts` = (last note id played before the jump, note id resumed at);
-                    the note labels above judge the final attempt.
+                    the note labels above judge the final attempt; `earlier` lists the
+                    mistakes in an attempt the player abandoned by going back.
   * Inserted notes that belong to no score note go in `extras`, positioned by
     the score note they follow (`after_note_id`, None = before the first note).
   * `capabilities` lists which error types the model can emit at all; types
@@ -57,6 +58,14 @@ class ExtraNotePrediction:
     time_s: float | None = None
 
 
+@dataclass(frozen=True)
+class EarlierMistake:
+    attempt: int                     # 1 = before the first restart, 2 = before the second, ...
+    note_id: str
+    label: str                       # wrong_pitch | missed
+    played_pitch: int | None = None
+
+
 @dataclass
 class TakePrediction:
     notes: list[NotePrediction]
@@ -65,6 +74,8 @@ class TakePrediction:
     artifacts: dict[str, str] = field(default_factory=dict)
     # places where the player went back: (last note id played before the jump, note id resumed at)
     restarts: list[tuple[str, str]] = field(default_factory=list)
+    # mistakes in an attempt the player abandoned by going back (the notes above judge the final attempt)
+    earlier: list[EarlierMistake] = field(default_factory=list)
 
     def to_json(self) -> dict:
         return {
@@ -73,6 +84,7 @@ class TakePrediction:
             "capabilities": sorted(self.capabilities),
             "artifacts": self.artifacts,
             "restarts": [list(r) for r in self.restarts],
+            "earlier": [asdict(e) for e in self.earlier],
         }
 
     def validate(self, note_ids: list[str]) -> None:

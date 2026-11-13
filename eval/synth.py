@@ -25,7 +25,7 @@ from eval.pieces import PieceSpec
 
 MONO_PIECES = ("c_major_rh", "e_major_rh", "e_major_rh_down", "ode_melody", "canon_lh")
 KINDS = ("clean", "sub", "shift", "miss_ins_step", "miss_ins_repeat", "miss_del",
-         "extra_score", "extra_dup", "hold", "gap", "stop_early", "restart")
+         "extra_score", "extra_dup", "hold", "gap", "stop_early", "restart", "restart_wrong")
 PRE = 3            # frames before an onset peak that belong to the new note (attack rise)
 
 
@@ -75,7 +75,11 @@ def _respec(spec: PieceSpec, hand: str, events) -> PieceSpec:
 
 def _case(kind, take_id, bundle, spec, errors, **meta) -> Case:
     b = rescore(bundle, spec.to_score_model())
-    return Case(kind, take_id, b, spec, TakeLabels(spec.name, perfect=not errors, errors=errors), meta)
+    gold = TakeLabels(spec.name, perfect=not errors, errors=errors)
+    if "restart" in meta:
+        gold.restarts = [meta["restart"]]
+    gold.earlier = list(meta.get("earlier", []))
+    return Case(kind, take_id, b, spec, gold, meta)
 
 
 def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
@@ -185,3 +189,26 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
                 frames = np.concatenate([np.arange(0, cut[j]), np.arange(cut[r], T)])
                 yield _case("restart", take_id, splice(bundle, frames), spec, [],
                             stop=j, resume=r, restart=(nid(j - 1), nid(r)))
+
+    if "restart_wrong" in kinds:                   # as restart, but the last note before going back was a
+        notes = spec.notes()                       # wrong key (the sound of a neighbouring note of another pitch)
+        bar_starts = [k for k, nt in enumerate(notes) if abs(nt.beat_in_measure - 1.0) < 1e-6]
+        for j in range(3, n):
+            i = j - 1
+            length = int(cut[j] - cut[i])
+            targets = {r for r in (0, max([b for b in bar_starts if b < j], default=0)) if j - r >= 2}
+            for r in sorted(targets):
+                # the wrong key must not equal the note before the resume point or the note before the
+                # stop: then "went back one note further" or "struck that key again" is the same sound
+                avoid = {P[i], P[i - 1]} | ({P[r - 1]} if r > 0 else set())
+                k = next((x for x in (j, i - 2, i + 1, i - 3, j + 1) if 0 <= x < n and P[x] not in avoid), None)
+                if k is None or length <= 0:
+                    continue
+                src = np.arange(cut[k], cut[k + 1] if k + 1 < n else T)
+                if src.size == 0:
+                    continue
+                wrong = np.concatenate([src, np.full(max(0, length - src.size), src[-1])])[:length]
+                frames = np.concatenate([np.arange(0, cut[i]), wrong, np.arange(cut[r], T)])
+                yield _case("restart_wrong", take_id, splice(bundle, frames), spec, [],
+                            stop=j, resume=r, restart=(nid(i), nid(r)),
+                            earlier=[GoldError("wrong_pitch", note_id=nid(i), played=P[k], attempt=1)])

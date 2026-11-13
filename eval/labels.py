@@ -43,6 +43,7 @@ class GoldError:
     note_id: str | None = None      # for note errors and flags
     after: str | None = None        # for extras; None = before the first note
     played: int | None = None
+    attempt: int = 0                # earlier-attempt mistakes only: 1 = before the first restart, ...
 
 
 @dataclass
@@ -52,6 +53,7 @@ class TakeLabels:
     errors: list[GoldError] = field(default_factory=list)
     todo: bool = False
     restarts: list[tuple[str, str]] = field(default_factory=list)   # (from note id, to note id)
+    earlier: list[GoldError] = field(default_factory=list)   # mistakes in attempts abandoned by a restart
 
     def note_labels(self, spec: PieceSpec) -> dict[str, str]:
         out = {n.id: "correct" for n in spec.notes()}
@@ -103,8 +105,16 @@ def load_labels(path: str | Path, spec: PieceSpec) -> TakeLabels:
         if "from" not in r or "to" not in r:
             raise ValueError(f"{path.name} restart #{i}: needs 'from' and 'to' note ids")
         restarts.append((r["from"], r["to"]))
+    earlier = []
+    for i, e in enumerate(raw.get("earlier", []), 1):
+        where = f"{path.name} earlier #{i}"
+        if e.get("type") not in NOTE_ERRORS or "note" not in e or int(e.get("attempt", 0)) < 1:
+            raise ValueError(f"{where}: needs attempt >= 1, note and type wrong_pitch or missed")
+        earlier.append(GoldError(e["type"], note_id=e["note"], attempt=int(e["attempt"]),
+                                 played=parse_pitch(e["played"]) if "played" in e else None))
     labels = TakeLabels(piece=spec.name, perfect=bool(raw.get("perfect", False)), errors=errors, todo=todo,
                         restarts=restarts)
+    labels.earlier = earlier
     if not todo:
         validate_labels(labels, spec, path)
     return labels
@@ -120,6 +130,11 @@ def validate_labels(labels: TakeLabels, spec: PieceSpec, path: Path) -> None:
         for ref in (a, b):
             if ref not in ids:
                 raise ValueError(f"{path}: restart names unknown note id '{ref}'")
+    for e in getattr(labels, "earlier", []):
+        if e.note_id not in ids:
+            raise ValueError(f"{path}: earlier-attempt mistake names unknown note id '{e.note_id}'")
+        if e.attempt > len(labels.restarts):
+            raise ValueError(f"{path}: attempt {e.attempt} but only {len(labels.restarts)} restart(s) labelled")
     seen_note_errors: dict[str, str] = {}
     for e in labels.errors:
         ref = e.after if e.type == EXTRA else e.note_id

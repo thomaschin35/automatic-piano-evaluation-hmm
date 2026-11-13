@@ -155,7 +155,12 @@ def report_to_prediction(an, rep, spec: PieceSpec, offset_s: float, capabilities
 
     extras = [ExtraNotePrediction(anchor(after), pitch, frame * spf + offset_s) for after, pitch, frame in rep.extras]
     restarts = [(notes_at[a][0].id, notes_at[b][0].id) for a, b in rep.restarts]
-    return TakePrediction(notes=preds, extras=extras, capabilities=capabilities, restarts=restarts)
+    from eval.contract import EarlierMistake
+    earlier = [EarlierMistake(att, next(n.id for n in notes_at[pi] if n.pitch == v.pitch), v.label,
+                              v.played if v.label == "wrong_pitch" else None)
+               for att, pi, v in getattr(rep, "earlier", [])]
+    return TakePrediction(notes=preds, extras=extras, capabilities=capabilities, restarts=restarts,
+                          earlier=earlier)
 
 
 ADAPTERS = {
