@@ -20,6 +20,15 @@ from eval.pieces import PieceSpec
 # strict: a note error counts only when the predicted label equals the gold label (a wrong label
 # is both a false alarm and a miss). goal: strict note labels + held_long, the project target.
 COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "goal")
+# full confusion: one class per note (its note label, else its first flag, else correct), plus extras
+# (a matched extra is extra/extra, an unmatched gold extra is extra/correct, a false one correct/extra)
+FULL_CLASSES = NOTE_LABELS + (EXTRA,) + FLAGS
+
+
+def note_class(label: str, flags) -> str:
+    if label != "correct":
+        return label
+    return next((f for f in FLAGS if f in flags), "correct")
 
 
 @dataclass
@@ -30,6 +39,7 @@ class TakeEval:
     failed: bool
     counts: Counter = field(default_factory=Counter)        # "<key>.tp|fp|fn"
     confusion: Counter = field(default_factory=Counter)     # (gold, pred)
+    confusion_full: Counter = field(default_factory=Counter)  # (gold, pred) over FULL_CLASSES
     played_hits: int = 0
     played_total: int = 0
     pred_errors: int = 0
@@ -137,6 +147,7 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
         pflags = set(pn.flags) if pn else set()
         gflags = gold_flags.get(n.id, set())
         ev.confusion[(g, p)] += 1
+        ev.confusion_full[(note_class(g, gflags), note_class(p, pflags))] += 1
         tally("error", g != "correct", p != "correct")
         tally("combined", g != "correct", p != "correct")
         for t in NOTE_ERRORS:
@@ -171,6 +182,9 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
         c[f"{key}.tp"] += hits
         c[f"{key}.fp"] += len(pred_x) - hits
         c[f"{key}.fn"] += len(gold_x) - hits
+    ev.confusion_full[(EXTRA, EXTRA)] += hits
+    ev.confusion_full[(EXTRA, "correct")] += len(gold_x) - hits
+    ev.confusion_full[("correct", EXTRA)] += len(pred_x) - hits
     ev.gold_errors += len(gold_x)
     ev.pred_errors += len(pred_x)
     return ev
@@ -186,10 +200,11 @@ def prf(tp: int, fp: int, fn: int) -> dict:
 
 def aggregate(evals: list[TakeEval]) -> dict:
     total = Counter()
-    conf = Counter()
+    conf, conf_full = Counter(), Counter()
     for ev in evals:
         total.update(ev.counts)
         conf.update(ev.confusion)
+        conf_full.update(ev.confusion_full)
     unsupported = sorted(set().union(*(ev.unsupported for ev in evals))) if evals else []
     block = {k: prf(total[f"{k}.tp"], total[f"{k}.fp"], total[f"{k}.fn"]) for k in COUNT_KEYS}
     for t in unsupported:
@@ -202,6 +217,7 @@ def aggregate(evals: list[TakeEval]) -> dict:
         "failed_takes": [ev.take_id for ev in evals if ev.failed],
         "unsupported_types": unsupported,
         "confusion": {g: {p: conf[(g, p)] for p in NOTE_LABELS} for g in NOTE_LABELS},
+        "confusion_full": {g: {p: conf_full[(g, p)] for p in FULL_CLASSES} for g in FULL_CLASSES},
         "played_pitch_accuracy": (sum(ev.played_hits for ev in evals) / played_total) if played_total else None,
         "played_pitch_n": played_total,
         "perfect_takes": {
@@ -219,10 +235,11 @@ def _from_block(take_id: str, piece: str, b: dict) -> TakeEval:
     """Rebuild a TakeEval's counters from its saved single-take block (metrics.json by_take)."""
     counts = Counter({f"{k}.{x}": b[k][x] for k in COUNT_KEYS if k in b for x in ("tp", "fp", "fn")})
     conf = Counter({(g, p): n for g, row in b["confusion"].items() for p, n in row.items()})
+    conf_full = Counter({(g, p): n for g, row in b.get("confusion_full", {}).items() for p, n in row.items()})
     played_total = b["played_pitch_n"]
     return TakeEval(
         take_id, piece, perfect=b["perfect_takes"]["n"] == 1, failed=bool(b["failed_takes"]),
-        counts=counts, confusion=conf,
+        counts=counts, confusion=conf, confusion_full=conf_full,
         played_hits=round((b["played_pitch_accuracy"] or 0) * played_total), played_total=played_total,
         pred_errors=b["combined"]["tp"] + b["combined"]["fp"],
         gold_errors=b["combined"]["tp"] + b["combined"]["fn"],

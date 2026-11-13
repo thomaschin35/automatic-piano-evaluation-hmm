@@ -115,7 +115,21 @@ class V3Adapter:
         (out_dir / "model_stdout.txt").write_text(log.getvalue())
         pred = report_to_prediction(an, rep, piece, bundle.audio.trim_offset_seconds, self.capabilities)
         pred.artifacts = {"stdout": str(out_dir / "model_stdout.txt")}
+        self._last = (out_dir, bundle, an, rep, piece)
         return pred
+
+    def plot_take(self, out_dir: Path, rows: list[dict] | None = None) -> Path | None:
+        """alignment.png for the take just predicted into out_dir; rows add the gold labels."""
+        if getattr(self, "_last", None) is None or self._last[0] != out_dir:
+            return None
+        import matplotlib.pyplot as plt
+        from eval.plots import plot_take
+        _, bundle, an, rep, piece = self._last
+        fig = plot_take(bundle, an, rep, piece, f"{out_dir.name}  ({piece.name})", rows)
+        path = out_dir / "alignment.png"
+        fig.savefig(path, dpi=130)
+        plt.close(fig)
+        return path
 
 
 def report_to_prediction(an, rep, spec: PieceSpec, offset_s: float, capabilities) -> TakePrediction:

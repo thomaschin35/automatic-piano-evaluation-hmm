@@ -364,6 +364,11 @@ def cmd_run(args) -> int:
             status = "FAILED"
         ev = evaluate_take(t.id, spec, labels, pred)
         evals.append(ev)
+        if pred is not None and hasattr(adapter, "plot_take"):
+            try:
+                adapter.plot_take(run_dir / "takes" / t.id, ev.rows)
+            except Exception as e:              # a chart never fails the run
+                print(f"  (no alignment chart for {t.id}: {e})")
         print(f"  {status}  {t.id:<28} {spec.name:<14} gold errors={ev.gold_errors} predicted={ev.pred_errors}")
 
     metrics = summarize(evals)
