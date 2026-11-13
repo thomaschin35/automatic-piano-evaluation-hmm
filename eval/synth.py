@@ -21,9 +21,9 @@ import numpy as np
 
 from eval.cache import rescore, splice
 from eval.labels import GoldError, TakeLabels
-from eval.pieces import PieceSpec
+from eval.pieces import PieceSpec, all_pieces
 
-MONO_PIECES = ("c_major_rh", "e_major_rh", "e_major_rh_down", "ode_melody", "canon_lh")
+MONO_PIECES = tuple(n for n, s in all_pieces().items() if s.is_mono)
 KINDS = ("clean", "sub", "shift", "miss_ins_step", "miss_ins_repeat", "miss_del",
          "extra_score", "extra_dup", "hold", "gap", "stop_early", "restart", "restart_wrong")
 PRE = 3            # frames before an onset peak that belong to the new note (attack rise)

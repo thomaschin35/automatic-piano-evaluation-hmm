@@ -11,7 +11,7 @@ from stft_hmm import SegmentResult
 from eval.adapters import segments_to_note_predictions
 from eval.contract import ExtraNotePrediction, NotePrediction, TakePrediction
 from eval.labels import GoldError, TakeLabels, load_labels
-from eval.metrics import evaluate_take, subset, summarize
+from eval.metrics import evaluate_take, summarize
 from eval.pieces import all_pieces, load_piece, parse_pitch
 
 
@@ -157,9 +157,9 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual((m["extra"]["tp"], m["extra"]["fp"], m["extra"]["fn"]), (1, 1, 1))
 
     def test_goal_is_both_layers(self):
-        """played = note labels + extras; timing = late + held_long; goal = both."""
+        """played = note labels + extras; timing = late; goal = both (held_long is out of scope)."""
         gold = TakeLabels("c_major_rh", False, [GoldError("missed", "RH2"), GoldError("extra", after="RH4"),
-                                                GoldError("late", "RH6")])
+                                                GoldError("late", "RH6"), GoldError("held_long", "RH8")])
         pred = all_correct(self.spec)
         pred.extras = [ExtraNotePrediction("RH4")]
         m = summarize([evaluate_take("t", self.spec, gold, pred)])["overall"]
@@ -175,7 +175,7 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(m["held_long"]["fn"], 1)
         self.assertTrue(m["held_long"]["unsupported"])
         self.assertIn("extra", m["unsupported_types"])
-        self.assertEqual(m["combined"]["fn"], 1)
+        self.assertEqual(m["goal"]["fn"], 0)                        # held_long is not in the goal
 
     def test_perfect_take_false_alarms(self):
         gold = TakeLabels("c_major_rh", True)
@@ -194,7 +194,7 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(m["failed_takes"], ["t"])
         self.assertEqual(m["error"]["fn"], 1)
 
-    def test_subset_matches_summarize(self):
+    def test_groups(self):
         both = load_piece("c_major_both")
         a = evaluate_take("a", self.spec, TakeLabels("c_major_rh", False, [GoldError("wrong_pitch", "RH4", played=64)]),
                           all_correct(self.spec, RH4=NotePrediction("RH4", "wrong_pitch", 64),
@@ -202,9 +202,9 @@ class TestMetrics(unittest.TestCase):
         b = evaluate_take("b", self.spec, TakeLabels("c_major_rh", True), all_correct(self.spec))
         c = evaluate_take("c", both, TakeLabels("c_major_both", False, [GoldError("missed", "LH1")]), None)
         full = summarize([a, b, c])
-        rows = a.rows + b.rows + c.rows
-        self.assertEqual(subset(full, rows, {"c_major_rh"}), summarize([a, b]))
-        self.assertEqual(subset(full, rows, {"c_major_rh", "c_major_both"}), full)
+        self.assertEqual(list(full["by_group"]), ["monophonic", "polyphonic"])
+        self.assertEqual(full["by_group"]["monophonic"], summarize([a, b])["overall"])
+        self.assertEqual(full["by_group"]["polyphonic"], summarize([c])["overall"])
 
     def test_prediction_validation(self):
         with self.assertRaises(ValueError):
@@ -323,6 +323,24 @@ class TestIntake(unittest.TestCase):
         self.assertIn("identical", got["1ode-2h-9.m4a"][1])
         self.assertIn("spaces", got["1ode-2h-1 2.m4a"][1])
         self.assertIn("no rule", got["1harp-1h.m4a"][1])
+
+
+class TestTempo(unittest.TestCase):
+    def test_steady_and_restart(self):
+        from eval.tempo import beat_tempo, measure_tempo, steadiness
+        spec = all_pieces()["c_major_rh"]                      # 8 quarter notes
+        rows = [{"note_id": f"RH{i + 1}", "onset_s": str(1.0 + 0.5 * i)} for i in range(8)]
+        b = beat_tempo(rows, spec)
+        self.assertEqual(len(b), 7)
+        for p in b:
+            self.assertAlmostEqual(p.bpm, 120.0)
+        self.assertAlmostEqual(steadiness(b)["cv_pct"], 0.0)
+        self.assertTrue(all(abs(p.bpm - 120.0) < 1e-9 for p in measure_tempo(rows, spec)))
+        rows[2]["onset_s"] = ""                                  # missed note: the gap spans it
+        self.assertAlmostEqual(beat_tempo(rows, spec)[1].bpm, 120.0)
+        self.assertEqual(beat_tempo(rows, spec)[1].beat_end - beat_tempo(rows, spec)[1].beat_start, 2.0)
+        rows[5]["onset_s"] = "0.5"                               # backwards onset: dropped
+        self.assertTrue(all(p.bpm > 0 for p in beat_tempo(rows, spec)))
 
 
 if __name__ == "__main__":

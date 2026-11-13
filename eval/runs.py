@@ -65,55 +65,56 @@ def resolve_run(name: str) -> Path:
 
 
 # ---------------------------------------------------------------- printing
+# F1 columns shown everywhere: the two headlines, then the error types in scope
+F1_KEYS = [("error", "err F1"), ("goal", "goal F1"), ("wrong_pitch", "wrong"), ("missed", "missed"),
+           ("extra", "extra"), ("late", "late"), ("restart", "restart")]
+
+
 def _fmt(x, pct=False) -> str:
     if x is None:
         return "  -  "
     return f"{x * 100:5.1f}" if pct else f"{x:5.2f}"
 
 
-def _f1_cell(block: dict, key: str) -> str:
-    m = block[key]
-    if m.get("unsupported"):
-        return "  n/a"
-    return _fmt(m["f1"])
+def _f1(block: dict | None, key: str):
+    """F1, or 'n/a' when the model cannot emit this type, or None when there is nothing to score."""
+    if block is None or key not in block:                   # older runs lack newer keys
+        return None
+    return "n/a" if block[key].get("unsupported") else block[key]["f1"]
+
+
+def report_rows(metrics: dict) -> list[tuple[str, dict]]:
+    """(name, block): each group's pieces then the group total (MONOPHONIC, POLYPHONIC), then OVERALL."""
+    from eval.pieces import all_pieces
+    group_of = {n: s.group for n, s in all_pieces().items()}
+    out = []
+    for g, gb in metrics.get("by_group", {}).items():
+        out += [(p, b) for p, b in metrics["by_piece"].items() if group_of.get(p) == g] + [(g.upper(), gb)]
+    return (out or list(metrics["by_piece"].items())) + [("OVERALL", metrics["overall"])]
 
 
 def print_summary(metrics: dict, title: str = "") -> None:
-    cols = ["takes", "notes", "err P", "err R", "err F1", "wrong", "missed", "extra",
-            "held", "early", "late", "comb", "clean", "pass%"]
-    header = f"{'piece':<16}" + "".join(f"{c:>7}" for c in cols)
-    print("\n" + "=" * len(header))
-    if title:
-        print(title)
-    print(header)
-    print("-" * len(header))
-    rows = list(metrics["by_piece"].items()) + [("OVERALL", metrics["overall"])]
-    for name, b in rows:
+    cols = ["takes", "notes", "err P", "err R"] + [c for _, c in F1_KEYS] + ["clean", "pass%"]
+    header = f"{'piece':<16}" + "".join(f"{c:>8}" for c in cols)
+    line = "-" * len(header)
+    print("\n" + "=" * len(header) + (f"\n{title}" if title else "") + f"\n{header}\n{line}")
+    for name, b in report_rows(metrics):
         pt = b["perfect_takes"]
-        cells = [
-            f"{b['n_takes']:>5}", f"{b['n_notes']:>5}",
-            _fmt(b["error"]["precision"]), _fmt(b["error"]["recall"]), _fmt(b["error"]["f1"]),
-            _f1_cell(b, "wrong_pitch"), _f1_cell(b, "missed"), _f1_cell(b, "extra"),
-            _f1_cell(b, "held_long"), _f1_cell(b, "early"), _f1_cell(b, "late"),
-            _fmt(b["combined"]["f1"]),
-            f"{pt['clean']}/{pt['n']}" if pt["n"] else "  -  ",
-            _fmt(b["pass_fail_accuracy"], pct=True),
-        ]
-        if name == "OVERALL":
-            print("-" * len(header))
-        print(f"{name:<16}" + "".join(f"{c:>7}" for c in cells))
+        cells = [b["n_takes"], b["n_notes"], _fmt(b["error"]["precision"]), _fmt(b["error"]["recall"])]
+        cells += [v if v == "n/a" else _fmt(v) for v in (_f1(b, k) for k, _ in F1_KEYS)]
+        cells += [f"{pt['clean']}/{pt['n']}" if pt["n"] else "  -  ", _fmt(b["pass_fail_accuracy"], pct=True)]
+        print(f"{name:<16}" + "".join(f"{c:>8}" for c in cells) + ("\n" + line if name.isupper() else ""))
     o = metrics["overall"]
-    print("-" * len(header))
-    print("F1 columns: '-' = nothing to score, 'n/a' = model cannot emit this type. "
-          "clean = perfect takes with zero flagged errors.")
+    print("err = any wrong/missed note flagged on the right note; goal = wrong, missed, extra and late, type must match.\n"
+          "'-' = nothing to score, 'n/a' = model cannot emit this type. clean = perfect takes with zero flags.")
     if o["played_pitch_n"]:
         print(f"Played-pitch accuracy on detected wrong notes: {_fmt(o['played_pitch_accuracy'], pct=True)}% "
               f"(n={o['played_pitch_n']})")
     if o["failed_takes"]:
         print(f"FAILED takes (counted as all-correct predictions): {', '.join(o['failed_takes'])}")
     conf = o["confusion"]
-    print("\nConfusion (rows = gold, cols = predicted):")
-    labs = list(conf)
+    labs = [l for l in conf if l == "correct" or sum(conf[l].values()) or sum(conf[g][l] for g in conf)]
+    print("\nConfusion (rows = your label, cols = model):")
     print(f"{'':>13}" + "".join(f"{l:>13}" for l in labs))
     for g in labs:
         print(f"{g:>13}" + "".join(f"{conf[g][p]:>13}" for p in labs))
@@ -150,21 +151,18 @@ def compare_runs(a: Path, b: Path) -> None:
     if only:
         print(f"Takes in only one run (ignored for note flips): {', '.join(sorted(only))}")
     print("\nNote: metric deltas use each run's full take set; flips use common takes only.")
-    keys = ["error", "wrong_pitch", "missed", "extra", "combined"]
-    print(f"\n{'piece':<16}" + "".join(f"{k + ' F1':>18}" for k in keys) + f"{'clean':>14}")
-    pieces = sorted(set(ma["by_piece"]) | set(mb["by_piece"])) + ["OVERALL"]
-    for p in pieces:
-        ba = ma["overall"] if p == "OVERALL" else ma["by_piece"].get(p)
-        bb = mb["overall"] if p == "OVERALL" else mb["by_piece"].get(p)
+    print(f"\n{'piece':<16}" + "".join(f"{c:>19}" for _, c in F1_KEYS) + f"{'clean':>16}")
+    for name, _ in report_rows(mb):
+        ba, bb = (m["overall"] if name == "OVERALL" else m.get("by_group", {}).get(name.lower()) or m["by_piece"].get(name)
+                  for m in (ma, mb))
         cells = []
-        for k in keys:
-            fa = ba[k]["f1"] if ba else None
-            fb = bb[k]["f1"] if bb else None
-            delta = f"{fb - fa:+.2f}" if fa is not None and fb is not None else "  "
-            cells.append(f"{_fmt(fa).strip()}->{_fmt(fb).strip()} {delta}")
-        ca = f"{ba['perfect_takes']['clean']}/{ba['perfect_takes']['n']}" if ba else "-"
-        cb = f"{bb['perfect_takes']['clean']}/{bb['perfect_takes']['n']}" if bb else "-"
-        print(f"{p:<16}" + "".join(f"{c:>18}" for c in cells) + f"{ca + '->' + cb:>14}")
+        for k, _ in F1_KEYS:
+            fa, fb = _f1(ba, k), _f1(bb, k)
+            num = isinstance(fa, float) and isinstance(fb, float)
+            cells.append(f"{fa if isinstance(fa, str) else _fmt(fa).strip()}->"
+                         f"{fb if isinstance(fb, str) else _fmt(fb).strip()}" + (f" {fb - fa:+.2f}" if num else ""))
+        clean = lambda b: f"{b['perfect_takes']['clean']}/{b['perfect_takes']['n']}" if b else "-"
+        print(f"{name:<16}" + "".join(f"{c:>19}" for c in cells) + f"{clean(ba) + '->' + clean(bb):>16}")
     fixed, broken = [], []
     for key in sorted(set(ra) & set(rb)):
         if key[0] not in common_takes:

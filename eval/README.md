@@ -38,7 +38,7 @@ not imported, so a half-done sheet never turns an unlabeled take into a "perfect
 ```
 This syncs any newer recordings, imports the labels, prints a status table, runs the model on
 every labeled take, and saves the run with charts. Then open `eval/results.ipynb`, which shows the
-latest run, including the single-hand section.
+latest run: results for monophonic, polyphonic and every piece, the charts and tempo.
 
 Without `--sheet`, `evaluate` uses the labels already imported.
 

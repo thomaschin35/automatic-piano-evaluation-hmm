@@ -67,6 +67,15 @@ class PieceSpec:
         return num * 4.0 / den
 
     @property
+    def is_mono(self) -> bool:
+        """One hand plays: a single line, one note at a time."""
+        return sum(any(p > 0 for p, _ in evs) for evs in self.hands.values()) == 1
+
+    @property
+    def group(self) -> str:
+        return "monophonic" if self.is_mono else "polyphonic"
+
+    @property
     def total_beats(self) -> float:
         return max((sum(d for _, d in evs) for evs in self.hands.values()), default=0.0)
 

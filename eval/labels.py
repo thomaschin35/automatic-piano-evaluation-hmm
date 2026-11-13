@@ -154,7 +154,6 @@ class Take:
     id: str
     piece: str
     audio: Path
-    split: str = ""         # unused for now: every take is scored
     notes: str = ""
     exclude: str = ""       # non-empty = never scored or labeled; the text says why
 
@@ -174,7 +173,7 @@ def load_manifest(path: Path = MANIFEST_PATH) -> list[Take]:
             raise ValueError(f"manifest: duplicate take id '{t['id']}'")
         seen.add(t["id"])
         takes.append(Take(id=t["id"], piece=t["piece"], audio=REPO_DIR / t["audio"],
-                          split=t.get("split", ""), notes=t.get("notes", ""),
+                          notes=t.get("notes", ""),
                           exclude=t.get("exclude", "")))
     return takes
 

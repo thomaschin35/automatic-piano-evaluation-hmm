@@ -3,8 +3,9 @@ plots.py
 Charts for one run directory (reads metrics.json and per_note.csv), written to
 <run>/plots/:
 
-  overview.png    per-piece error precision / recall / F1, plus recall per error type
-  confusion.png   gold vs predicted class (note labels, extras, timing flags), row-normalized
+  overview.png    error precision / recall / F1 per piece, per group and overall, plus recall per type
+  confusion.png   gold vs predicted class (note labels, extras, timing flags), row-normalized;
+                  confusion_monophonic.png / confusion_polyphonic.png for each group
   note_map.png    every take x every score note: agreement, catches, false alarms, misses
 
 Each plot_* function returns a matplotlib Figure (shown inline in
@@ -36,8 +37,9 @@ OUTCOMES = {
     "false_alarm": ("False alarm (note was correct)", SERIES[1]),
     "missed": ("Error missed", SERIES[2]),
 }
-ERROR_TYPES = [("wrong_pitch", "Wrong pitch"), ("missed", "Missed note"), ("extra", "Extra note"),
-               ("held_long", "Held long"), ("early", "Early"), ("late", "Late")]
+# error types in scope (held_long / early are neither labelled nor detected)
+ERROR_TYPES = [("wrong_pitch", "Wrong pitch"), ("missed", "Missed note"), ("extra", "Extra note"), ("late", "Late"),
+               ("restart", "Went back (restart)")]
 
 plt.rcParams.update({
     "font.family": ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"],
@@ -68,9 +70,10 @@ def _title(fig, title, subtitle):
 
 # ---------------------------------------------------------------- overview
 def plot_overview(metrics: dict, run_name: str = ""):
-    pieces = list(metrics["by_piece"])
-    rows = pieces + ["OVERALL"]
-    blocks = [metrics["by_piece"][p] for p in pieces] + [metrics["overall"]]
+    """Left: error precision / recall / F1 per piece, per group (mono / poly) and overall.
+    Right: recall per error type, overall."""
+    from eval.runs import report_rows
+    rows, blocks = zip(*report_rows(metrics))
     fig, (ax, ax2) = plt.subplots(1, 2, figsize=(13, 0.48 * len(rows) + 2.4),
                                   gridspec_kw={"width_ratios": [1.6, 1], "wspace": 0.55})
     keys = [("precision", "Precision"), ("recall", "Recall"), ("f1", "F1")]
@@ -92,14 +95,16 @@ def plot_overview(metrics: dict, run_name: str = ""):
         clean = f"   clean {pt['clean']}/{pt['n']}" if pt["n"] else ""
         labels.append(f"{row}\n{b['n_takes']} takes{clean}")
     ax.set_yticks(range(len(rows)), labels, fontsize=9)
-    ax.get_yticklabels()[-1].set_fontweight("bold")
-    ax.axhline(len(rows) - 1.5, color=AXIS, linewidth=0.8)
+    for i, (row, lab) in enumerate(zip(rows, ax.get_yticklabels())):
+        if row.isupper():                                   # group and overall totals
+            lab.set_fontweight("bold")
+            ax.axhline(i + 0.5, color=AXIS, linewidth=0.8)
     ax.set_ylim(len(rows) - 0.45, -0.6)
     ax.set_xlim(0, 1.12)
     ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
     ax.set_xlabel("score (0–1)")
     _clean_axes(ax)
-    ax.set_title("Note-level error detection, by piece", loc="left", fontsize=11, color=INK, pad=10)
+    ax.set_title("Error detection", loc="left", fontsize=11, color=INK, pad=10)
     ax.legend(handles=[Patch(color=c, label=l) for c, (_, l) in zip(SERIES, keys)],
               loc="lower right", bbox_to_anchor=(1.0, 1.0), ncol=3, frameon=False, fontsize=9)
 
@@ -126,7 +131,7 @@ def plot_overview(metrics: dict, run_name: str = ""):
     ax2.set_title("Recall by error type, every take shown", loc="left", fontsize=11, color=INK, pad=10)
 
     o_err = o["error"]
-    _title(fig, f"Error F1 {_fmt(o_err['f1'])}  ·  precision {_fmt(o_err['precision'])}  ·  "
+    _title(fig, f"Error F1 {_fmt(o_err['f1'])}  ·  goal F1 {_fmt(o['goal']['f1'])}  ·  precision {_fmt(o_err['precision'])}  ·  "
                 f"recall {_fmt(o_err['recall'])}",
            f"{run_name}  ·  {o['n_takes']} takes, {o['n_notes']} notes  ·  perfect takes with zero false alarms: "
            f"{o['perfect_takes']['clean']}/{o['perfect_takes']['n']}")
@@ -136,10 +141,9 @@ def plot_overview(metrics: dict, run_name: str = ""):
 
 # ---------------------------------------------------------------- confusion
 def plot_confusion(metrics: dict, run_name: str = "", block: dict | None = None):
-    """Gold class vs model class per note, extras included (old runs: the 3 note labels only)."""
+    """Your label vs the model's class per note (its label, else its timing flag), extras included."""
     b = block or metrics["overall"]
-    full = "confusion_full" in b
-    conf = b["confusion_full"] if full else b["confusion"]
+    conf = b["confusion"]
     names = {"correct": "Correct", "wrong_pitch": "Wrong pitch", "missed": "Missed", "extra": "Extra",
              "held_long": "Held long", "early": "Early", "late": "Late"}
     labs = [l for l in conf if l == "correct" or sum(conf[l].values()) or sum(conf[g][l] for g in conf)]
@@ -157,9 +161,8 @@ def plot_confusion(metrics: dict, run_name: str = "", block: dict | None = None)
                     fontweight="bold" if c else "normal", color=color)
             if c:
                 ax.text(j, i + 0.22, f"{f:.0%}", ha="center", va="center", fontsize=8, color=color)
-    col_names = [names[l] if l != "correct" else ("Correct /\nnothing" if full else "Correct") for l in labs]
-    row_names = [f"{names[l] if l != 'correct' or not full else 'Correct / none'}  ({sum(r)})"
-                 for l, r in zip(labs, counts)]
+    col_names = [names[l] if l != "correct" else "Correct /\nnothing" for l in labs]
+    row_names = [f"{names[l] if l != 'correct' else 'Correct / none'}  ({sum(r)})" for l, r in zip(labs, counts)]
     ax.set_xticks(range(k), col_names, fontsize=9)
     ax.set_yticks(range(k), row_names, fontsize=9)
     ax.set_xlabel("Model said")
@@ -173,10 +176,8 @@ def plot_confusion(metrics: dict, run_name: str = "", block: dict | None = None)
     ax.set_yticks([y + 0.5 for y in range(k - 1)], minor=True)
     ax.grid(which="minor", color=SURFACE, linewidth=3)
     ax.tick_params(which="minor", length=0)
-    sub = f"{run_name}  ·  rows sum to 100%; diagonal = agreement"
-    if full:
-        sub += ("\nOne class per note: its label, else its timing flag. Extras have no score note: "
-                "a missed extra is Extra -> nothing, a false one is none -> Extra.")
+    sub = (f"{run_name}  ·  rows sum to 100%; diagonal = agreement\nOne class per note: its label, else its "
+           "timing flag. Extras have no score note: a missed extra is Extra -> nothing, a false one is none -> Extra.")
     _title(fig, "What the model said for each note", sub)
     fig.subplots_adjust(left=0.24, right=0.97, top=1 - 2.0 / fig.get_figheight(), bottom=0.04)
     return fig
@@ -263,6 +264,8 @@ def plot_run(run_dir: Path) -> list[Path]:
     out.mkdir(exist_ok=True)
     figs = {"overview": plot_overview(metrics, run_dir.name),
             "confusion": plot_confusion(metrics, run_dir.name),
+            **{f"confusion_{g}": plot_confusion(metrics, f"{run_dir.name} · {g}", b)
+               for g, b in metrics.get("by_group", {}).items()},
             "note_map": plot_note_map(rows, run_dir.name)}
     paths = []
     for name, fig in figs.items():
@@ -393,4 +396,101 @@ def plot_take(bundle, an, rep, spec, title: str = "", rows: list[dict] | None = 
     _title(fig, title or "v3 alignment",
            "Top: key presence and the model's verdicts.  Bottom: which score note each strike was matched to.")
     fig.subplots_adjust(left=0.13, right=0.99, top=1 - 1.25 / fig.get_figheight(), bottom=0.5 / fig.get_figheight())
+    return fig
+
+
+# ---------------------------------------------------------------- tempo over time
+def plot_tempo(rows: list[dict], spec, title: str = ""):
+    """Tempo over time for one take (rows = that take's per_note.csv rows).
+
+    Thin line: tempo between each pair of consecutive notes (per beat).  Thick steps: tempo per
+    measure, drawn across the seconds that measure took.  Dashed: the take's average tempo, so a
+    steady player stays near it.  Uses the model's onsets (see eval/tempo.py)."""
+    from eval.tempo import beat_tempo, measure_tempo, steadiness
+    beats, measures = beat_tempo(rows, spec), measure_tempo(rows, spec)
+    st = steadiness(beats)
+    fig, ax = plt.subplots(figsize=(12, 4.2))
+    if not beats:
+        ax.text(0.5, 0.5, "no onsets for this take", ha="center", transform=ax.transAxes, color=MUTED)
+        return fig
+    ax.plot([p.t_mid for p in beats], [p.bpm for p in beats], color=SERIES[0], linewidth=1.2, alpha=0.75,
+            marker="o", markersize=4, mfc=SURFACE, mec=SERIES[0], mew=1.2, zorder=3, label="per beat (note to note)")
+    for i, p in enumerate(measures):
+        ax.plot([p.t_start, p.t_end], [p.bpm, p.bpm], color=SERIES[1], linewidth=3, solid_capstyle="round",
+                zorder=4, label="per measure" if i == 0 else None)
+        ax.axvline(p.t_start, color=GRID, linewidth=0.8, zorder=1)
+        ax.text(p.t_start, 1.0, f" {p.label}", transform=ax.get_xaxis_transform(), fontsize=8, color=MUTED,
+                va="bottom", ha="left")
+    ax.axhline(st["mean_bpm"], color=INK_2, linewidth=1, linestyle="--", zorder=2,
+               label=f"average {st['mean_bpm']:.0f} BPM")
+    slow = min(beats, key=lambda p: p.bpm)
+    fast = max(beats, key=lambda p: p.bpm)
+    for p, va, dy in ((slow, "top", -8), (fast, "bottom", 8)):
+        note = "  (pause or restart?)" if p is slow and p.bpm < 0.5 * st["mean_bpm"] else ""
+        ax.annotate(f"{p.label}  {p.bpm:.0f}{note}", (p.t_mid, p.bpm), xytext=(0, dy), textcoords="offset points",
+                    fontsize=8, color=INK_2, ha="center", va=va)
+    lo, hi = min(p.bpm for p in beats), max(p.bpm for p in beats)
+    pad = max(10, 0.12 * (hi - lo))
+    ax.set_ylim(max(0, lo - pad), hi + pad)
+    ax.set_xlabel("seconds")
+    ax.set_ylabel("tempo (BPM, quarter-note beats)")
+    _clean_axes(ax, grid_axis="y")
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.06), ncol=3, frameon=False, fontsize=9)
+    _title(fig, title or "Tempo over time",
+           f"Variation {st['cv_pct']:.0f}% (std / mean, per beat).  Score tempo {spec.bpm:.0f} BPM for reference.")
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.70, bottom=0.13)
+    return fig
+
+
+def plot_tempo_piece(rows: list[dict], spec, title: str = ""):
+    """Note-to-note tempo for every take of one piece, x = position in the score, so takes line up.
+    Tempo is relative to each take's own average (100% = that take's average), so fast and slow
+    players are comparable.  Thin gray: one take each.  Blue: median across takes, with the band
+    holding the middle half of takes.  A dip everyone shares is a spot players slow down at."""
+    import numpy as np
+    from eval.tempo import beat_tempo, steadiness
+    by_take: dict[str, list[dict]] = {}
+    for r in rows:
+        if r["piece"] == spec.name:
+            by_take.setdefault(r["take"], []).append(r)
+    fig, ax = plt.subplots(figsize=(12, 4.4))
+    per_x: dict[float, list[float]] = {}
+    names: dict[float, str] = {}
+    for rs in by_take.values():
+        pts = beat_tempo(rs, spec)
+        if not pts:
+            continue
+        mean = steadiness(pts)["mean_bpm"]
+        xs = [p.beat_start for p in pts]
+        ys = [100 * p.bpm / mean for p in pts]
+        ax.plot(xs, ys, color=AXIS, linewidth=0.8, alpha=0.6, zorder=2)
+        for p, x, y in zip(pts, xs, ys):
+            per_x.setdefault(x, []).append(y)
+            names.setdefault(x, p.label.split("→")[0])
+    xs = sorted(x for x in per_x if len(per_x[x]) >= 3)
+    if xs:
+        q = np.array([np.percentile(per_x[x], [25, 50, 75]) for x in xs])
+        ax.fill_between(xs, q[:, 0], q[:, 2], color=SERIES[0], alpha=0.18, linewidth=0, zorder=3,
+                        label="middle half of takes")
+        ax.plot(xs, q[:, 1], color=SERIES[0], linewidth=2.2, marker="o", markersize=5, mfc=SERIES[0],
+                mec=SURFACE, mew=1.2, zorder=4, label="median across takes")
+        ax.set_xticks(xs, [names[x] for x in xs], fontsize=8)
+        lo = int(np.argmin(q[:, 1]))
+        ax.annotate(f"slowest: after {names[xs[lo]]}  {q[lo, 1]:.0f}%", (xs[lo], q[lo, 1]), xytext=(0, -14),
+                    textcoords="offset points", fontsize=8.5, color=INK, va="top",
+                    ha="right" if lo == len(xs) - 1 else "left" if lo == 0 else "center")
+        bpm_ = spec.beats_per_measure
+        for b in np.arange(spec.pickup_beats, max(xs) + 1e-6, bpm_)[1:]:
+            ax.axvline(b - 0.5, color=GRID, linewidth=0.8, zorder=1)
+        allv = np.concatenate([q[:, 0], q[:, 2]])
+        ax.set_ylim(max(0, allv.min() - 25), allv.max() + 25)
+    ax.axhline(100, color=INK_2, linewidth=1, linestyle="--", zorder=3, label="take's own average")
+    ax.plot([], [], color=AXIS, linewidth=1, label="one take")
+    ax.set_xlabel("tempo from this note to the next (score order; faint lines = bar lines)")
+    ax.set_ylabel("tempo, % of take average")
+    _clean_axes(ax, grid_axis="y")
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.02), ncol=4, frameon=False, fontsize=9)
+    _title(fig, title or f"Tempo through the piece · {spec.name}",
+           f"{len(by_take)} takes.  Below 100% = slower than that player's average at this point.")
+    fig.subplots_adjust(left=0.07, right=0.99, top=0.72, bottom=0.14)
     return fig

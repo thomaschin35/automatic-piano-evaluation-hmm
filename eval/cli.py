@@ -4,14 +4,13 @@ cli.py  --  python -m eval.cli <command>
   evaluate [--sheet F]         one step: sync new recordings, import the sheet, run, chart
   sync                         register new recordings (piece from file name), convert,
                                and write labeling-sheet rows for them
-  status                       per piece: takes ready, waiting for labels, excluded
+  status (or validate)         per piece: takes ready, waiting for labels, excluded, problems
   convert                      m4a -> wav for every .m4a take in the manifest (or the files given)
   score <piece>                print the numbered score used by label files
   pieces                       list piece specs
   new-take <audio> --piece P   add a manifest entry and write a label template
   sheet-template [--new]       per-note labeling sheet (TSV) to paste into Google Sheets
   import-sheet <csv|tsv>       write label files from the filled-in sheet
-  validate                     check manifest, audio, labels and piece specs
   run [--model v2] [--piece P] [--take T]
   plots <run>                  overview, confusion and note-map charts for a run
   compare <runA> <runB>        metric deltas and per-note flips between two runs
@@ -292,33 +291,6 @@ def check_take(take, pieces) -> tuple[str, object, object]:
     return "ok", spec, labels
 
 
-def cmd_validate(args) -> int:
-    pieces = all_pieces()
-    for name, spec in pieces.items():
-        if spec.pending:
-            print(f"WARN  piece {name}: pending transcription")
-    takes = load_manifest()
-    n_ok, n_bad, n_excluded, n_wait = 0, 0, 0, 0
-    for t in takes:
-        status, _, _ = check_take(t, pieces)
-        if status == "ok":
-            n_ok += 1
-            if args.verbose:
-                print(f"OK    {t.id} ({t.piece})")
-        elif status.startswith("excluded"):
-            n_excluded += 1
-            print(f"SKIP  {t.id} ({t.piece}): {status}")
-        elif status == WAITING:
-            n_wait += 1
-            print(f"WAIT  {t.id} ({t.piece}): {status}")
-        else:
-            n_bad += 1
-            print(f"ERROR {t.id} ({t.piece}): {status}")
-    print(f"\n{len(takes)} takes ("
-          f"excluded={n_excluded}); {n_ok} ready, {n_wait} waiting for labels, {n_bad} with problems")
-    return 0 if n_bad == 0 else 1
-
-
 # ---------------------------------------------------------------- run
 def cmd_run(args) -> int:
     from eval.adapters import get_adapter
@@ -466,7 +438,7 @@ def main(argv=None) -> int:
     p.add_argument("--dry-run", action="store_true", help="only show what would be added")
     p.set_defaults(func=lambda a: (cmd_sync(a), 0)[1])
 
-    p = sub.add_parser("status", help="per piece: takes ready, waiting for labels, excluded")
+    p = sub.add_parser("status", aliases=["validate"], help="per piece: takes ready, waiting, excluded, problems")
     p.set_defaults(func=cmd_status)
 
     p = sub.add_parser("convert", help="convert m4a recordings to wav")
@@ -497,10 +469,6 @@ def main(argv=None) -> int:
     p = sub.add_parser("import-sheet", help="write label files from the exported labeling sheet")
     p.add_argument("sheet", help=".csv or .tsv exported from Google Sheets")
     p.set_defaults(func=cmd_import_sheet)
-
-    p = sub.add_parser("validate", help="check manifest, audio and labels")
-    p.add_argument("-v", "--verbose", action="store_true")
-    p.set_defaults(func=cmd_validate)
 
     p = sub.add_parser("run", help="run a model over the manifest and score it")
     p.add_argument("--model", default="v3")
