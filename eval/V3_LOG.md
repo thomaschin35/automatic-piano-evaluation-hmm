@@ -507,3 +507,46 @@ REAL-TAKE DISAGREEMENTS (57)
   3ode-1h-extra4 extras tp/fp/fn=0/0/1
   3ode-2h-extralh extras tp/fp/fn=0/0/1
 ```
+
+## 2026-11-13 10:09  Two-layer taxonomy (late = started late; held_long = overlap, not detected); Canon and overlap takes excluded; soft re-strike detection; beat-based late
+
+```
+SCOREBOARD  model=v3  (118.5s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all                58   778 |   0.91   0.89   1.00 |       0.82  0.96  0.89 |  0.97  0.77  0.89  1.00   -   | 27/28
+  mono               45   549 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 21/21
+  two_hand           13   229 |   0.56   0.43   1.00 |       0.33  0.75  0.46 |  0.86  0.00  0.00  1.00   -   | 6/7
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  two_hand_p3         6   108 |   0.43   0.20   1.00 |       0.14  0.50  0.22 |  0.67  0.00  0.00  1.00   -   | 1/2
+  mono counts, found/false/not found: wrong=14/0/0  missed=10/0/0  extra=4/0/0  late=6/0/0  held=0/0/0
+
+ONSET-ONLY (pitch term off): 21/21 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          21 |  1.00 |        -     -     -   |    -       -   | 0.00
+  sub                           980 |  0.99 |       0.99  1.00  0.99 |    -       -   | 0.02
+  shift                         118 |  0.78 |       0.94  0.82  0.88 |    -       -   | 0.34
+  miss_ins_step                 224 |  0.93 |       0.91  0.93  0.92 |    -       -   | 0.12
+  miss_ins_repeat               224 |  0.90 |       0.88  0.90  0.89 |    -       -   | 0.17
+  miss_del                      203 |  0.87 |       0.94  0.87  0.90 |    -       -   | 0.09
+  extra_score                   203 |  0.92 |       0.94  0.92  0.93 |   1.00     -   | 0.09
+  extra_dup                     203 |  0.92 |       0.00   -    0.00 |   0.92     -   | 0.07
+  hold                          224 |  0.99 |       0.00   -    0.00 |    -      0.99 | 0.01
+  gap                           224 |  0.98 |       0.00   -    0.00 |    -      0.98 | 0.01
+  stop_early                     42 |  0.93 |       0.99  0.95  0.97 |    -       -   | 0.05
+  restart                       279 |  0.99 |       0.00   -    0.00 |    -       -   | 0.01 | restart located  0.99
+
+REAL-TAKE DISAGREEMENTS (8)
+  3cmajor-2h-clean RH1 C4 gold=correct pred=missed
+  3cmajor-2h-clean LH3 E3 gold=correct pred=missed
+  3cmajor-2h-clean LH4 F3 gold=correct pred=missed
+  3cmajor-2h-wrong5 LH3 E3 gold=correct pred=missed
+  3ode-2h-extralh RH3 F4 gold=correct pred=wrong_pitch
+  3ode-2h-missrh9 RH9 C4 gold=missed pred=correct
+  3ode-2h-pause9 RH10 C4 gold=correct pred=missed
+  3ode-2h-extralh extras tp/fp/fn=0/0/1
+```

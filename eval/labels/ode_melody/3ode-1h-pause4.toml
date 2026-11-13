@@ -2,8 +2,8 @@
 # Edit the shared sheet and re-import rather than editing this file.
 piece = "ode_melody"
 perfect = false
-# note RH4: silent pause before
 
 [[error]]
 note = "RH4"
-type = "late"
+type = "missed"
+comment = "only one G4 was struck after the pause (checked by ear and in the audio)"

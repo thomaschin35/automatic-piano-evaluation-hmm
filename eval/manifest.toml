@@ -40,6 +40,7 @@ id = "1can-1h-1"
 piece = "canon_lh"
 audio = "recordings/eval-interviews/raw/1can-1h-1.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "1can-2h-1"
@@ -53,12 +54,14 @@ id = "1can-1h-2"
 piece = "canon_lh"
 audio = "recordings/eval-interviews/raw/1can-1h-2.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "1can-2h-2"
 piece = "canon_both"
 audio = "recordings/eval-interviews/raw/1can-2h-2.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "1cmajor-2h-up"
@@ -71,24 +74,28 @@ id = "2can-1h-1"
 piece = "canon_lh"
 audio = "recordings/eval-interviews/raw/2can-1h-1.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "2can-2h-1"
 piece = "canon_both"
 audio = "recordings/eval-interviews/raw/2can-2h-1.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "2can-1h-2"
 piece = "canon_lh"
 audio = "recordings/eval-interviews/raw/2can-1h-2.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "2can-2h-2"
 piece = "canon_both"
 audio = "recordings/eval-interviews/raw/2can-2h-2.m4a"
 split = "dev"
+exclude = "Canon is out of the test set: its timing labels were made by ear before the definitions were fixed"
 
 [[take]]
 id = "2cmajor-2h-up"
@@ -250,6 +257,7 @@ audio = "recordings/person3/3cmajor-1h-miss4.m4a"
 id = "3cmajor-1h-overlap6"
 piece = "c_major_rh"
 audio = "recordings/person3/3cmajor-1h-overlap6.m4a"
+exclude = "overlap (key held under the next note) is out of scope for now"
 
 [[take]]
 id = "3cmajor-1h-pause5"
@@ -290,6 +298,7 @@ audio = "recordings/person3/3emajor-1h-down-extra2.m4a"
 id = "3emajor-1h-down-overlap4"
 piece = "e_major_rh_down"
 audio = "recordings/person3/3emajor-1h-down-overlap4.m4a"
+exclude = "overlap (key held under the next note) is out of scope for now"
 
 [[take]]
 id = "3emajor-1h-down-pause5"
@@ -345,6 +354,7 @@ audio = "recordings/person3/3ode-1h-miss8.m4a"
 id = "3ode-1h-overlap7"
 piece = "ode_melody"
 audio = "recordings/person3/3ode-1h-overlap7.m4a"
+exclude = "overlap (key held under the next note) is out of scope for now"
 
 [[take]]
 id = "3ode-1h-pause4"

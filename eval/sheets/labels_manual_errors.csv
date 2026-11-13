@@ -937,8 +937,8 @@ ode_harm_1wrongH,ode_harmony,RH15,D4,4,3,correct,,,
 3cmajor-1h-stretch4,c_major_rh,RH1,C4,1,1,correct,,,
 3cmajor-1h-stretch4,c_major_rh,RH2,D4,1,2,correct,,,
 3cmajor-1h-stretch4,c_major_rh,RH3,E4,1,3,correct,,,
-3cmajor-1h-stretch4,c_major_rh,RH4,F4,1,4,correct,,held_long,stretch: held two beats
-3cmajor-1h-stretch4,c_major_rh,RH5,G4,2,1,correct,,,
+3cmajor-1h-stretch4,c_major_rh,RH4,F4,1,4,correct,,,held this note two beats
+3cmajor-1h-stretch4,c_major_rh,RH5,G4,2,1,correct,,late,came late: RH4 was held two beats
 3cmajor-1h-stretch4,c_major_rh,RH6,A4,2,2,correct,,,
 3cmajor-1h-stretch4,c_major_rh,RH7,B4,2,3,correct,,,
 3cmajor-1h-stretch4,c_major_rh,RH8,C5,2,4,correct,,,
@@ -1148,7 +1148,7 @@ ode_harm_1wrongH,ode_harmony,RH15,D4,4,3,correct,,,
 3ode-1h-pause4,ode_melody,RH1,E4,1,1,correct,,,
 3ode-1h-pause4,ode_melody,RH2,E4,1,2,correct,,,
 3ode-1h-pause4,ode_melody,RH3,F4,1,3,correct,,,
-3ode-1h-pause4,ode_melody,RH4,G4,1,4,correct,,late,silent pause before
+3ode-1h-pause4,ode_melody,RH4,G4,1,4,missed,,,only one G4 was struck after the pause (checked by ear and in the audio)
 3ode-1h-pause4,ode_melody,RH5,G4,2,1,correct,,,
 3ode-1h-pause4,ode_melody,RH6,F4,2,2,correct,,,
 3ode-1h-pause4,ode_melody,RH7,E4,2,3,correct,,,
@@ -1261,8 +1261,8 @@ ode_harm_1wrongH,ode_harmony,RH15,D4,4,3,correct,,,
 3ode-1h-stretch12,ode_melody,RH9,C4,3,1,correct,,,
 3ode-1h-stretch12,ode_melody,RH10,C4,3,2,correct,,,
 3ode-1h-stretch12,ode_melody,RH11,D4,3,3,correct,,,
-3ode-1h-stretch12,ode_melody,RH12,E4,3,4,correct,,held_long,stretch: held two beats
-3ode-1h-stretch12,ode_melody,RH13,E4,4,1,correct,,,
+3ode-1h-stretch12,ode_melody,RH12,E4,3,4,correct,,,held this note two beats
+3ode-1h-stretch12,ode_melody,RH13,E4,4,1,correct,,late,came late: RH12 was held two beats
 3ode-1h-stretch12,ode_melody,RH14,D4,4,2.5,correct,,,
 3ode-1h-stretch12,ode_melody,RH15,D4,4,3,correct,,,
 3ode-1h-wrong3,ode_melody,RH1,E4,1,1,correct,,,

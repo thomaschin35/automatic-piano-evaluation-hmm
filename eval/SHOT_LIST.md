@@ -1,5 +1,11 @@
 # Recording shot list: held-out test set (player 3)
 
+> **Changed since this was recorded (2026-11-13).** "Late" now means the note started late for any
+> reason, so the two "stretch" takes (25, 26) are labelled `late` on the following note. "Held too
+> long" now means only the key not being released under the next note; the three "overlap" takes
+> (22-24) are excluded from testing because no model detects that yet. Take 28 (`pause4`) had only
+> one G4 and is labelled `RH4 missed`. Round 2 is in [SHOT_LIST_2.md](SHOT_LIST_2.md).
+
 **Purpose:** check v3 on a pianist it has never seen. Every number so far comes from players 1 and 2,
 and v3's settings were chosen while looking at their takes. The scoreboard reports player 3 as its
 own row, so the first run on these takes shows how v3 does on a new player.

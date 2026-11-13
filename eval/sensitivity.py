@@ -14,7 +14,7 @@ from eval.adapters import get_adapter
 
 SETTINGS = ("onset_floor", "onset_full", "match_min_salience", "sub_min_salience", "extra_report_salience",
             "ghost_ratio", "smudge_ratio", "sub_cost", "skip_cost", "extra_cost", "timing_weight",
-            "slow_ratio", "back_cost_bar", "raw_rise_db")
+            "late_beats", "back_cost_bar", "raw_rise_db")
 
 
 def row(board: dict) -> tuple:

@@ -12,8 +12,16 @@ eval/pieces.py assigns (hand + 1-based index within that hand, e.g. "RH4");
 
 Rules:
   * Return one NotePrediction for every ScoreNote in the piece.
-  * `label` is the note-level verdict: "correct", "wrong_pitch" or "missed".
-  * `flags` may add held_long / early / late to any note (including correct ones).
+  * Two layers, answered by different evidence:
+      WHAT WAS PLAYED  `label` = "correct", "wrong_pitch" (another key instead of the written
+                       one) or "missed" (never played); a note the score does not have is an
+                       entry in `extras`.
+      WHEN / HOW LONG  `flags`, added on top of the label (a wrong note can also be late):
+                       late      = the note STARTED late, whatever the reason (the player paused,
+                                   or kept the previous key down and waited);
+                       held_long = the key was NOT RELEASED when the next note was played on time
+                                   (it sounds under the next note). Not detected by any model yet.
+                       early     = started early (not labelled or detected yet).
   * Inserted notes that belong to no score note go in `extras`, positioned by
     the score note they follow (`after_note_id`, None = before the first note).
   * `capabilities` lists which error types the model can emit at all; types

@@ -13,7 +13,7 @@
 # Put more specific rules first: the first match wins.
 
 # Folders scanned for new recordings (relative to the repo root).
-folders = ["recordings/eval-interviews/raw", "recordings/person3"]
+folders = ["recordings/eval-interviews/raw", "recordings/person3", "recordings/round2"]
 
 [[rule]]
 key = "cmajor"

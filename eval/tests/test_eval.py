@@ -155,6 +155,17 @@ class TestMetrics(unittest.TestCase):
         m = summarize([evaluate_take("t", self.spec, gold, pred)])["overall"]
         self.assertEqual((m["extra"]["tp"], m["extra"]["fp"], m["extra"]["fn"]), (1, 1, 1))
 
+    def test_goal_is_both_layers(self):
+        """played = note labels + extras; timing = late + held_long; goal = both."""
+        gold = TakeLabels("c_major_rh", False, [GoldError("missed", "RH2"), GoldError("extra", after="RH4"),
+                                                GoldError("late", "RH6")])
+        pred = all_correct(self.spec)
+        pred.extras = [ExtraNotePrediction("RH4")]
+        m = summarize([evaluate_take("t", self.spec, gold, pred)])["overall"]
+        self.assertEqual((m["played"]["tp"], m["played"]["fn"]), (1, 1))
+        self.assertEqual((m["timing"]["tp"], m["timing"]["fn"]), (0, 1))
+        self.assertEqual((m["goal"]["tp"], m["goal"]["fp"], m["goal"]["fn"]), (1, 0, 2))
+
     def test_flags_and_unsupported(self):
         gold = TakeLabels("c_major_rh", False, [GoldError("held_long", "RH8")])
         pred = all_correct(self.spec)

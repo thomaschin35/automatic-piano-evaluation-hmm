@@ -1,8 +1,24 @@
 # Piano score-following evaluator: `stft_hmm_v3` (branch `thomas-hmm-2`)
 
 Goal: follow a player through a known score (monophonic lines, simple two-voice pieces) and say,
-per note, **correct / wrong pitch / missed / held too long**, with F1 >= 0.9 on monophonic pieces,
-and follow the player when they **go back** and try again.
+per note, what went wrong, with F1 >= 0.9 on monophonic pieces, and follow the player when they
+**go back** and try again.
+
+## What is reported
+
+Two layers, answered by different evidence. A note gets one answer from the first and may get a
+flag from the second on top (a wrong note can also be late).
+
+| Layer | Outcome | Meaning |
+|---|---|---|
+| What was played | correct | the written key |
+| | wrong pitch | another key instead of the written one (the key is named) |
+| | missed | the written note was never played |
+| | extra | a note the score does not have |
+| When / how long | late | the note **started** late, whatever the reason: the player paused, or kept the previous key down and waited. The reason is printed beside it. |
+| | held too long | the key was **not released** when the next note was played on time. Defined and labelled, **not detected yet**. |
+
+"Goal F1" on the scoreboard is all of these together; "played" and "timing" are the two layers.
 
 `stft_hmm_v3.py` is a note-level hidden Markov model over detected key strikes. It replaces the
 frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
@@ -18,14 +34,40 @@ frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
    matched events is compared with the written beat distance at the local tempo, with separate
    allowances for a dropped note that drops its time and an added note that adds its own.
 3. **Verdicts.** Read off the path. A wrong key followed by the right one is reported as a wrong
-   pitch on that note ("then corrected"). A gap of >= 1.5x its written length is "held too long"
-   if the note rang through it and "late" for the next note if it had died away.
+   pitch on that note ("then corrected"). A note that starts 0.4 beats or more after its place
+   (or 20% of the written gap, for long notes) is late, also right after a missed note.
+4. **Soft repeats.** A key struck again while it is still ringing barely moves its onset score.
+   It is accepted from a lower score when the key's own level jumps (>= 3 dB) and the overall
+   loudness rises with it; an unmatched soft strike that repeats the neighbouring note's key at
+   60% of that note's strength is reported as an extra. A faint wrong key (down to the strength
+   at which a right key would count) can stand in for a note at a higher cost, instead of the
+   note being called missed.
 
 ```bash
 .venv/bin/python stft_hmm_v3.py --audio recordings/eval-interviews/processed/2ode-1h-wrong.wav --model ode_melody
 ```
 
-## Results
+## Current status (2026-11-13)
+
+58 labelled takes from three players: 45 monophonic, 13 two-hand. Canon and the three "overlap"
+takes are excluded (`exclude` in `eval/manifest.toml` says why).
+
+| Monophonic, existing takes | before | now |
+|---|---|---|
+| Goal F1 (all classes) | 0.87 | **1.00** |
+| wrong pitch, found / false / not found | 13 / 2 / 1 | 14 / 0 / 0 |
+| missed | 10 / 2 / 0 | 10 / 0 / 0 |
+| extra | 2 / 0 / 2 | 4 / 0 / 0 |
+| late | 6 / 2 / 0 | 6 / 0 / 0 |
+| clean takes with no flag | 21 / 21 | 21 / 21 |
+
+These takes were used to find and fix the mistakes, so 1.00 is not a measure of how v3 does on
+new playing. The held-out measure is round 2 ([eval/SHOT_LIST_2.md](eval/SHOT_LIST_2.md), file
+prefix `4`, scoreboard row `mono_round2`). Two-hand takes are unchanged (goal F1 0.56) and are
+not the current priority. The synthetic suite is level or better on every kind except two that
+fell by 0.01.
+
+## Earlier results (two players, before the taxonomy change)
 
 32 labelled takes, 814 notes, two players. "Strict" counts a note only if the label matches
 (wrong pitch vs missed); "goal" adds held-too-long. Same test suite for both models.
@@ -104,9 +146,11 @@ The decisions behind each phase, including the ones that failed, are in [eval/V3
 
 ## Next steps
 
-- Record takes with deliberate mistakes by more players, especially held notes and restarts, and
-  agree on what "held too long" means before labelling them.
-- Hold out a player: nothing here has been tested on a pianist the settings have not seen.
+- Score round 2 (46 held-out monophonic takes aimed at extras, late notes and repeated notes).
+- Held too long (key not released under the next note) has a definition but no detector. On
+  different-pitch pairs the previous key still sounding 0.35 s after the next strike separated
+  2 of 3 examples from 630 normal pairs; repeated pitches cannot show it.
+- The sensitivity table below predates these changes and has not been re-run.
 - Octave doubling needs per-piano calibration (single-hand takes give each key's own overtone
   profile) before a missing doubled note can be detected.
 

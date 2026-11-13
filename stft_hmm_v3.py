@@ -13,7 +13,7 @@ hidden Markov model whose hidden state is the score position:
 
 The time between matched events is compared with the score's beat distance at the local tempo
 (explicit-duration term), which keeps a run of wrong notes from sliding the alignment and gives
-the late / held-long verdicts. Features come unchanged from stft_features.py.
+the late verdict. Features come unchanged from stft_features.py.
 """
 from __future__ import annotations
 import argparse
@@ -41,6 +41,13 @@ class V3Config:
     ghost_ratio: float = 0.85         # a sub-harmonic weaker than this x the note above it is a ghost
     leak_ratio: float = 0.80          # a semitone neighbour weaker than this x its neighbour is leakage
     match_min_salience: float = 0.30  # an expected pitch counts as struck from this salience up
+    # a key struck again while it is still ringing barely moves its onset score (the pitch is already
+    # there). It is accepted from a lower onset score when the key's own level jumps and the overall
+    # loudness rises with it, and then counts at full strength.
+    restrike_floor: float = 0.20      # onset score from which a re-strike of a ringing key is considered
+    restrike_presence: float = 0.20   # the key must be sounding before and after
+    restrike_rise_db: float = 3.0     # jump of the key's fundamental
+    restrike_energy: float = 0.15     # rise of the frame energy (0..1 scale)
     # score pitches that sit on a harmonic of another score pitch (octave, fifth, third above the
     # bass) are erased by the front end's overtone subtraction; for those only, a strike is also
     # read straight off the spectrum: the fundamental's level must jump and stand out as a peak
@@ -51,7 +58,8 @@ class V3Config:
     sub_cost_near: float = 2.5        # ... when it is a neighbouring key (within a whole tone): the usual slip
     skip_time_slack: float = 1.0      # a dropped note usually drops its time too: allow that reading at this cost
     extra_time_slack: float = 1.5     # an added note usually adds its time: likewise
-    sub_min_salience: float = 0.40    # a weak event cannot stand in for a note
+    sub_min_salience: float = 0.40    # an event at least this clear stands in for a note at the plain cost;
+    sub_weak_penalty: float = 3.0     # a fainter one (down to match_min_salience) pays up to this much more
     skip_cost: float = 4.0            # a score note with no event
     jump_cost: float = 9.0            # a long forward skip costs jump_cost + jump_step per note at most
     jump_step: float = 0.25
@@ -68,12 +76,17 @@ class V3Config:
     back_cost_any: float = 7.0        # going back to any other earlier note
     back_min_notes: int = 2           # replaying fewer notes than this is a re-strike (an extra), not a restart
     # --- timing verdicts
-    slow_ratio: float = 1.5           # a gap this many times its written length is a timing error:
-    sounding_level: float = 0.5       #   note still sounding (>= this x its level) up to the next strike
-    sounding_frames: int = 5          #   over these frames before it -> "held too long"; silent -> next note "late"
+    late_beats: float = 0.4           # a note that starts this many beats after its place is late ...
+    late_fraction: float = 0.2        # ... or this fraction of the written gap, whichever is larger (long notes drift more)
+    sounding_level: float = 0.5       # reason for a late note: the previous key still sounding (>= this x its
+    sounding_frames: int = 5          #   level over these frames before the strike, and the room not silent)
+    silence_energy: float = 0.02      #   -> "held"; otherwise "paused"
+    late_after_missed: bool = True    # also judge the note that follows a missed note (its time is kept)
     # --- reporting
     smudge_ratio: float = 0.90        # a stray key struck this strongly next to the right one: not a clean note
     extra_report_salience: float = 0.40
+    restrike_report_ratio: float = 0.6   # a fainter unmatched strike is still an extra when it repeats the
+                                         # neighbouring note's key at this fraction of that note's strength
     tempo_passes: int = 2
 
 
@@ -159,6 +172,24 @@ def raw_strikes(bundle, pitch: int, cfg: V3Config) -> list[int]:
     return [f for f in _peaks(rise, cfg.raw_rise_db, cfg.same_pitch_gap) if f + cfg.min_frames_after <= T]
 
 
+def restruck(bundle, pitch: int, f: int, cfg: V3Config) -> bool:
+    """Was `pitch`, already ringing, struck again at frame f?"""
+    pres, T = bundle.candidate_scores[pitch], bundle.audio.num_frames
+    db, en = getattr(bundle.audio, "stft_db", None), getattr(bundle, "frame_energy", None)
+    if db is None or en is None or f < 6 or f + 4 > T:
+        return False
+    if min(float(np.median(pres[f - 6:f - 1])), float(np.median(pres[f + 1:f + 1 + cfg.presence_window]))) < cfg.restrike_presence:
+        return False
+    n_bins = db.shape[0]
+    k = int(round(stft_features.midi_to_frequency(pitch) * (n_bins - 1) * 2 / bundle.audio.sample_rate))
+    if k < 1 or k + 2 > n_bins:
+        return False
+    level = db[k - 1:k + 2].max(axis=0).astype(np.float64)
+    if level[f + 1:f + 4].mean() - level[f - 4:f - 1].mean() < cfg.restrike_rise_db:
+        return False
+    return float(en[f + 1:f + 4].max() - en[f - 4:f - 1].min()) >= cfg.restrike_energy
+
+
 def detect_events(bundle, cfg: V3Config) -> list[Event]:
     T = bundle.audio.num_frames
     cands: list[tuple[int, int, float]] = []          # (frame, pitch, salience)
@@ -169,10 +200,14 @@ def detect_events(bundle, cfg: V3Config) -> list[Event]:
             raw.add((f, q))
     for p, onset in bundle.candidate_onset_scores.items():
         pres = bundle.candidate_scores[p]
-        for f in _peaks(onset, cfg.onset_floor, cfg.same_pitch_gap):
+        for f in _peaks(onset, min(cfg.onset_floor, cfg.restrike_floor), cfg.same_pitch_gap):
             if f + cfg.min_frames_after > T:
                 continue
-            gain = min(1.0, (float(onset[f]) - cfg.onset_floor) / (cfg.onset_full - cfg.onset_floor))
+            gain = float(np.clip((float(onset[f]) - cfg.onset_floor) / (cfg.onset_full - cfg.onset_floor), 0.0, 1.0))
+            if gain < 1.0 and restruck(bundle, p, f, cfg):
+                gain = 1.0
+            if gain <= 0.0:
+                continue
             s = gain * float(np.median(pres[f + 1:min(T, f + 1 + cfg.presence_window)]))
             if s >= cfg.min_salience:
                 cands.append((f, p, s))
@@ -264,10 +299,12 @@ def emission_cost(event: Event, pos: Position, cfg: V3Config) -> float:
         return 0.0
     if len(missing) < len(pos.pitches):
         return cfg.chord_missing_cost * len(missing)
-    if event.salience < cfg.sub_min_salience:
+    if event.salience < cfg.match_min_salience:
         return np.inf
+    weak = max(0.0, cfg.sub_min_salience - event.salience) / max(cfg.sub_min_salience - cfg.match_min_salience, 1e-6)
     near = min(abs(event.pitch - p) for p in pos.pitches) <= 2
-    return (cfg.sub_cost_near if near else cfg.sub_cost) + cfg.chord_missing_cost * (len(missing) - 1)
+    return ((cfg.sub_cost_near if near else cfg.sub_cost) + cfg.sub_weak_penalty * weak
+            + cfg.chord_missing_cost * (len(missing) - 1))
 
 
 def extra_cost(event: Event, cfg: V3Config) -> float:
@@ -402,7 +439,9 @@ class PitchVerdict:
     played: int | None = None
     frame: int | None = None
     corrected: bool = False        # a wrong key first, then the right one
-    flags: set = field(default_factory=set)      # held_long | late
+    flags: set = field(default_factory=set)      # late (held_long = overlap is not detected yet)
+    late_reason: str = ""          # "held" (previous key kept down) | "paused" (silence before the note)
+    late_beats: float = 0.0        # how many beats late
 
 
 @dataclass
@@ -431,7 +470,8 @@ def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg
             else:
                 out.append(PitchVerdict(p, "correct", p, event.frame))
             continue
-        cand = [(abs(q - p), q) for q, sq in free if q not in used and sq >= cfg.sub_min_salience]
+        floor = cfg.match_min_salience if len(pos.pitches) == 1 else cfg.sub_min_salience
+        cand = [(abs(q - p), q) for q, sq in free if q not in used and sq >= floor]
         if cand:
             q = min(cand)[1]
             used.add(q)
@@ -448,32 +488,41 @@ def still_sounding(bundle, pitch: int, onset: int, until: int, cfg: V3Config) ->
     lo, hi = max(onset + 2, until - 1 - cfg.sounding_frames), until - 1
     if hi <= lo or level <= 0.0:
         return True
+    en = getattr(bundle, "frame_energy", None)         # presence is relative: it reads high in silence too
+    if en is not None and float(np.median(en[lo:hi])) < cfg.silence_energy:
+        return False
     return float(np.mean(pres[lo:hi] >= cfg.sounding_level * level)) >= 0.5
 
 
 def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
-    """A gap between two consecutive score notes that lasts >= slow_ratio x its written length:
-    if the first note rang on through the gap it was held too long, otherwise the second came late."""
+    """Late = the note started late, whatever the reason. The time since the previous matched note
+    is compared with the written distance in beats at the local tempo (missed notes in between keep
+    their time). A note that follows an extra or stray strike is not judged: that strike took an
+    unknown share of the time and is already reported. The reason is kept beside the flag: the
+    previous key was held down, or there was a pause."""
     spf = an.seconds_per_frame
+    extra_frames = {f for _, _, f in rep.extras}
     for a, c in zip(an.matches, an.matches[1:]):
-        if c.position != a.position + 1 or any(
-                an.events[k].salience >= cfg.extra_report_salience for k in range(a.event + 1, c.event)):
-            continue                                   # skips, restarts and extra notes explain their own time
+        if c.kind == "back" or c.position <= a.position:
+            continue                                   # a restart explains its own time
         va, vc = rep.verdicts[a.position], rep.verdicts[c.position]
         if any(v.corrected for v in vc):
+            continue                                   # so does a wrong key pressed first
+        if any(an.events[k].salience >= cfg.extra_report_salience or an.events[k].frame in extra_frames
+               for k in range(a.event + 1, c.event)):
+            continue
+        if c.position != a.position + 1 and not cfg.late_after_missed:
             continue
         fa, fc = an.events[a.event].frame, an.events[c.event].frame
         beats = an.positions[c.position].beat - an.positions[a.position].beat
-        ratio = (fc - fa) * spf / (beats * an.seconds_per_beat[c.event])
-        if ratio < cfg.slow_ratio:
+        delay = (fc - fa) * spf / an.seconds_per_beat[c.event] - beats
+        if delay < max(cfg.late_beats, cfg.late_fraction * beats):
             continue
-        sounding = [v for v in va if v.played is not None and still_sounding(bundle, v.played, fa, fc, cfg)]
-        if sounding:
-            for v in sounding:
-                v.flags.add("held_long")
-        else:
-            for v in vc:
-                v.flags.add("late")
+        held = any(v.played is not None and still_sounding(bundle, v.played, fa, fc, cfg) for v in va)
+        for v in vc:
+            v.flags.add("late")
+            v.late_reason = "held" if held else "paused"
+            v.late_beats = float(delay)
 
 
 def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
@@ -487,12 +536,19 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     visits: dict[int, list[int]] = {}
     extras, restarts = [], []
     matched = {m.event: m for m in an.matches}
-    last_pos, prev_pitches = None, ()
-    pending: list[Event] = []                          # clear unmatched events since the last match
+    last_pos, prev_pitches, last_ev = None, (), None
+    pending: list[Event] = []                          # unmatched events since the last match that may be notes
+
+    def clear(x: Event, neighbours: list[Event]) -> bool:
+        """Loud enough to report: plainly, or as a repeat of a neighbouring note's key."""
+        if x.salience >= cfg.extra_report_salience:
+            return True
+        ref = max((dict(n.primary).get(x.pitch, 0.0) for n in neighbours if n is not None), default=0.0)
+        return ref > 0.0 and x.salience >= cfg.restrike_report_ratio * ref
     for e, ev in enumerate(an.events):
         m = matched.get(e)
         if m is None:
-            if ev.salience >= cfg.extra_report_salience:
+            if ev.salience >= cfg.match_min_salience:
                 pending.append(ev)
             continue
         pos = an.positions[m.position]
@@ -501,6 +557,8 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
         vs, _ = verdicts_for(ev, pos, prev_pitches, cfg)
         prev_set = set(an.positions[last_pos].pitches) if last_pos is not None else set()
         for x in pending:
+            if not clear(x, [last_ev, ev]):
+                continue
             target = min(vs, key=lambda v: abs(v.pitch - x.pitch))
             if x.pitch in prev_set or x.pitch in pos.pitches or m.kind == "back" or target.label != "correct":
                 extras.append((last_pos, x.pitch, x.frame))
@@ -509,9 +567,9 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
         pending = []
         verdicts[m.position] = vs                                          # the last visit decides
         visits.setdefault(m.position, []).append(e)
-        last_pos = m.position
+        last_pos, last_ev = m.position, ev
         prev_pitches = tuple(v.played for v in vs if v.played is not None)
-    extras += [(last_pos, x.pitch, x.frame) for x in pending]
+    extras += [(last_pos, x.pitch, x.frame) for x in pending if clear(x, [last_ev])]
     for pos in an.positions:
         if pos.index not in verdicts:
             verdicts[pos.index] = [PitchVerdict(p, "missed") for p in pos.pitches]
@@ -533,7 +591,9 @@ def print_report(an: Analysis, rep: Report) -> None:
                     "wrong_pitch": f"WRONG NOTE (played {midi_to_note_name(v.played or 0)}"
                                    f"{', then corrected' if v.corrected else ''})"}[v.label]
             again = f"  [played {len(rep.visits[pos.index])}x]" if len(rep.visits.get(pos.index, [])) > 1 else ""
-            again += "".join({"held_long": "  HELD TOO LONG", "late": "  LATE"}[f] for f in sorted(v.flags))
+            if "late" in v.flags:
+                why = {"held": "the previous key was held down", "paused": "after a pause"}.get(v.late_reason, "")
+                again += f"  LATE by {v.late_beats:.1f} beats" + (f" ({why})" if why else "")
             print(f"  note {pos.index + 1:3d}  beat {pos.beat:5.2f}  {midi_to_note_name(v.pitch):<4} {when}  {what}{again}")
     for after, pitch, frame in rep.extras:
         where = f"after note {after + 1}" if after is not None else "before the first note"

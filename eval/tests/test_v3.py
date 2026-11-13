@@ -59,6 +59,14 @@ class V3OnFakePerformance(unittest.TestCase):
         for c, pred, ev in self.run_kind("gap"):
             self.assertEqual((ev.counts["late.tp"], ev.counts["late.fp"], ev.counts["late.fn"]), (1, 0, 0), str(c.meta))
 
+    def test_held_gap_is_late_too_and_never_held_long(self):
+        """Late = the note started late, whatever the reason. Keeping the previous key down and
+        waiting is `late` on the next note; held_long (overlap) is not something v3 emits."""
+        for c, pred, ev in self.run_kind("hold"):
+            self.assertEqual((ev.counts["late.tp"], ev.counts["late.fp"], ev.counts["late.fn"]), (1, 0, 0), str(c.meta))
+            self.assertFalse(any("held_long" in n.flags for n in pred.notes), str(c.meta))
+        self.assertNotIn("held_long", get_adapter("v3").capabilities)
+
 
 if __name__ == "__main__":
     unittest.main()

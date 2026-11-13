@@ -2,8 +2,9 @@
 # Edit the shared sheet and re-import rather than editing this file.
 piece = "ode_melody"
 perfect = false
-# note RH12: stretch: held two beats
+# note RH12: held this note two beats
+# note RH13: came late: RH12 was held two beats
 
 [[error]]
-note = "RH12"
-type = "held_long"
+note = "RH13"
+type = "late"

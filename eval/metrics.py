@@ -18,8 +18,11 @@ from eval.labels import TakeLabels
 from eval.pieces import PieceSpec
 
 # strict: a note error counts only when the predicted label equals the gold label (a wrong label
-# is both a false alarm and a miss). goal: strict note labels + held_long, the project target.
-COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "goal")
+# is both a false alarm and a miss).
+# played: the "what was played" layer = strict note labels + extras.
+# timing: the "when / how long" layer = late + held_long.
+# goal:   both layers together (wrong pitch, missed, extra, late, held too long), the project target.
+COUNT_KEYS = ("error",) + ERROR_TYPES + ("combined", "strict", "played", "timing", "goal")
 # full confusion: one class per note (its note label, else its first flag, else correct), plus extras
 # (a matched extra is extra/extra, an unmatched gold extra is extra/correct, a false one correct/extra)
 FULL_CLASSES = NOTE_LABELS + (EXTRA,) + FLAGS
@@ -152,11 +155,13 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
         tally("combined", g != "correct", p != "correct")
         for t in NOTE_ERRORS:
             tally(t, g == t, p == t)
-        for key in ("strict", "goal"):
+        for key in ("strict", "played", "goal"):
             c[f"{key}.tp"] += int(g != "correct" and p == g)
             c[f"{key}.fp"] += int(p != "correct" and p != g)
             c[f"{key}.fn"] += int(g != "correct" and p != g)
-        tally("goal", "held_long" in gflags, "held_long" in pflags)
+        for fl in ("late", "held_long"):
+            tally("timing", fl in gflags, fl in pflags)
+            tally("goal", fl in gflags, fl in pflags)
         for fl in FLAGS:
             tally(fl, fl in gflags, fl in pflags)
             tally("combined", fl in gflags, fl in pflags)
@@ -178,7 +183,7 @@ def evaluate_take(take_id: str, spec: PieceSpec, gold: TakeLabels,
 
     gold_x, pred_x = gold.extras(), (pred.extras if pred else [])
     hits = _match_extras(gold_x, pred_x, spec_ids)
-    for key in (EXTRA, "combined"):
+    for key in (EXTRA, "combined", "played", "goal"):
         c[f"{key}.tp"] += hits
         c[f"{key}.fp"] += len(pred_x) - hits
         c[f"{key}.fn"] += len(gold_x) - hits

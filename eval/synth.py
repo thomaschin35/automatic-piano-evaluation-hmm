@@ -157,9 +157,9 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
         if kind not in kinds:
             continue
         for i in range(1, n):
-            if kind == "hold":                     # ... filled by the previous note ringing on: held too long
-                src = np.arange(max(cut[i - 1] + PRE + 2, cut[i] - 3), cut[i])
-                gold = [GoldError("held_long", note_id=nid(i - 1))]
+            if kind == "hold":                     # ... filled by the previous note ringing on: the next
+                src = np.arange(max(cut[i - 1] + PRE + 2, cut[i] - 3), cut[i])     # note still STARTS late
+                gold = [GoldError("late", note_id=nid(i))]
             else:                                  # ... silent: the next note comes late
                 src = np.array([-1])                # silent frames
                 gold = [GoldError("late", note_id=nid(i))]

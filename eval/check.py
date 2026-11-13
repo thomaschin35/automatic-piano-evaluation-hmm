@@ -23,7 +23,7 @@ from eval.pieces import all_pieces
 from eval import synth
 
 BOARD_DIR = EVAL_DIR / "scoreboards"
-CLASSES = ("error", "strict", "goal", "wrong_pitch", "missed", "extra", "held_long", "late")
+CLASSES = ("error", "strict", "played", "timing", "goal", "wrong_pitch", "missed", "extra", "held_long", "late")
 # metrics that must not drop for a change to be accepted
 GUARDED = ("real.mono.goal.f1", "real.mono.strict.f1", "real.mono.clean", "real.all.strict.f1", "real.all.clean")
 
@@ -81,6 +81,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
         "mono_p1": _block([e for e in mono if e.take_id.startswith("1")]),
         "mono_p2": _block([e for e in mono if e.take_id.startswith("2")]),
         "mono_p3": _block([e for e in mono if e.take_id.startswith("3")]),
+        "mono_round2": _block([e for e in mono if e.take_id.startswith("4")]),
         "two_hand_p3": _block([e for e in real if e.piece not in synth.MONO_PIECES and e.take_id.startswith("3")]),
     }, "real_errors": [
         f"{r['take']} {r['note_id']} {r['pitch']} gold={r['gold']}{'+' + r['gold_flags'] if r['gold_flags'] else ''}"
@@ -138,7 +139,7 @@ def flatten(board: dict) -> dict[str, float]:
             continue
         out[f"real.{g}.clean"] = b["clean"]
         for k in CLASSES:
-            if b[k]["f1"] is not None:
+            if k in b and b[k]["f1"] is not None:
                 out[f"real.{g}.{k}.f1"] = b[k]["f1"]
     out["onset_only.clean"] = board["onset_only"]["clean"]
     for k, b in board["synth"].items():
@@ -161,28 +162,29 @@ def render(board: dict) -> str:
     if board.get("crashes"):
         L += [f"!!! {board['crashes']} PREDICTIONS CRASHED - the numbers below are not valid: {board['crash_examples']}"]
     L += ["",
-         "REAL TAKES        takes notes | goal F1 | strict P     R    F1 | wrong missed extra  held  late | clean"]
+         "goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)",
+         "REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean"]
     for g, b in board["real"].items():
         if not b.get("n_takes"):
             continue
         s = b["strict"]
-        L.append(f"  {g:<15} {b['n_takes']:>5} {b['n_notes']:>5} |  {_f(b['goal']['f1'])}  |      {_f(s['precision'])} {_f(s['recall'])} {_f(s['f1'])} |"
-                 f" {_f(b['wrong_pitch']['f1'])} {_f(b['missed']['f1'])} {_f(b['extra']['f1'])} {_f(b['held_long']['f1'])} {_f(b['late']['f1'])} |"
+        L.append(f"  {g:<15} {b['n_takes']:>5} {b['n_notes']:>5} |  {_f(b['goal']['f1'])}  {_f(b['played']['f1'])}  {_f(b['timing']['f1'])} |      {_f(s['precision'])} {_f(s['recall'])} {_f(s['f1'])} |"
+                 f" {_f(b['wrong_pitch']['f1'])} {_f(b['missed']['f1'])} {_f(b['extra']['f1'])} {_f(b['late']['f1'])} {_f(b['held_long']['f1'])} |"
                  f" {b['clean']}/{b['n_perfect']}")
     m = board["real"]["mono"]
     if m.get("n_takes"):
-        L.append(f"  goal counts (mono): strict tp/fp/fn={m['strict']['tp']}/{m['strict']['fp']}/{m['strict']['fn']}  "
-                 f"held_long tp/fp/fn={m['held_long']['tp']}/{m['held_long']['fp']}/{m['held_long']['fn']}  "
-                 f"late={m['late']['tp']}/{m['late']['fp']}/{m['late']['fn']}  extra={m['extra']['tp']}/{m['extra']['fp']}/{m['extra']['fn']}")
+        L.append("  mono counts, found/false/not found: " + "  ".join(
+            f"{n}={m[k]['tp']}/{m[k]['fp']}/{m[k]['fn']}" for n, k in (
+                ("wrong", "wrong_pitch"), ("missed", "missed"), ("extra", "extra"), ("late", "late"), ("held", "held_long"))))
     o = board["onset_only"]
     L += ["", f"ONSET-ONLY (pitch term off): {o['clean']}/{o['n']} clean monophonic takes still flag nothing"]
     if board["synth"]:
-        L += ["", "SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  held R  late R | false flags/case"]
+        L += ["", "SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case"]
         for k, b in board["synth"].items():
             s = b["strict"]
             loc = f" | restart located {_f(b['located'])}" if "located" in b else ""
             L.append(f"  {k:<26} {b['n_cases']:>6} | {_f(b['exact'])} |      {_f(s['precision'])} {_f(s['recall'])} {_f(s['f1'])} |"
-                     f"  {_f(b['extra']['recall'])}   {_f(b['held_long']['recall'])}   {_f(b['late']['recall'])} | {b['false_flags']:.2f}{loc}")
+                     f"  {_f(b['extra']['recall'])}   {_f(b['late']['recall'])} | {b['false_flags']:.2f}{loc}")
     if board["real_errors"]:
         L += ["", f"REAL-TAKE DISAGREEMENTS ({len(board['real_errors'])})"] + [f"  {e}" for e in board["real_errors"]]
     return "\n".join(L)
