@@ -411,3 +411,99 @@ REAL-TAKE DISAGREEMENTS (37)
   2can-2h-2 LH63 A3 gold=correct pred=wrong_pitch
   2can-2h-2 extras tp/fp/fn=0/1/0
 ```
+
+### Player 3 added (36 takes from eval/SHOT_LIST.md, labelled from the shot list)
+
+The scoreboard below is the first one with player 3; guarded metrics "regress" only because the take
+set grew, so it was accepted with --force as the new baseline. Player 3 was not used to tune v3.
+
+## 2026-11-12 22:12  Player 3 added: 68 takes
+
+```
+SCOREBOARD  model=v3  (92.2s)
+
+REAL TAKES        takes notes | goal F1 | strict P     R    F1 | wrong missed extra  held  late | clean
+  all                68  1281 |   0.71  |       0.73  0.83  0.78 |  0.85  0.61  0.50  0.20  0.51 | 27/28
+  mono               52   836 |   0.85  |       0.89  0.98  0.93 |  0.96  0.86  0.67  0.31  0.74 | 21/21
+  two_hand           16   445 |   0.48  |       0.50  0.59  0.54 |  0.65  0.40  0.00  0.00  0.25 | 6/7
+  mono_p1            10   227 |   0.98  |       1.00  1.00  1.00 |  1.00  1.00   -    0.00  1.00 | 6/6
+  mono_p2            10   234 |   0.82  |       1.00  1.00  1.00 |  1.00  1.00   -    0.00  0.60 | 5/5
+  mono_p3            30   359 |   0.73  |       0.72  0.93  0.81 |  0.80  0.82  0.67  0.44  0.86 | 9/9
+  two_hand_p3         6   108 |   0.22  |       0.14  0.50  0.22 |  0.67  0.00  0.00   -    1.00 | 1/2
+  goal counts (mono): strict tp/fp/fn=41/5/1  held_long tp/fp/fn=2/3/6  late=7/3/2  extra=2/0/2
+
+ONSET-ONLY (pitch term off): 21/21 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  held R  late R | false flags/case
+  clean                          21 |  1.00 |        -     -     -   |    -       -       -   | 0.00
+  sub                           980 |  0.97 |       0.98  0.98  0.98 |    -       -       -   | 0.04
+  shift                         118 |  0.74 |       0.92  0.78  0.85 |    -       -       -   | 0.41
+  miss_ins_step                 224 |  0.93 |       0.91  0.93  0.92 |    -       -       -   | 0.12
+  miss_ins_repeat               224 |  0.90 |       0.88  0.90  0.89 |    -       -       -   | 0.17
+  miss_del                      203 |  0.87 |       0.94  0.87  0.90 |    -       -       -   | 0.09
+  extra_score                   203 |  0.93 |       0.94  0.92  0.93 |   1.00     -       -   | 0.08
+  extra_dup                     203 |  0.91 |       0.00   -    0.00 |   0.91     -       -   | 0.08
+  hold                          224 |  0.95 |       0.00   -    0.00 |    -      0.95     -   | 0.04
+  gap                           224 |  0.99 |       0.00   -    0.00 |    -       -      0.99 | 0.01
+  stop_early                     42 |  0.93 |       0.99  0.95  0.97 |    -       -       -   | 0.05
+  restart                       279 |  0.99 |       0.00   -    0.00 |    -       -       -   | 0.01 | restart located  0.99
+
+REAL-TAKE DISAGREEMENTS (57)
+  1can-1h-2 LH37 A2 gold=correct+late pred=correct+held_long|late
+  1can-2h-2 LH36 F#4 gold=correct pred=correct+held_long
+  1can-2h-2 RH3 D5 gold=correct pred=correct+late
+  1can-2h-2 LH41 B2 gold=correct pred=correct+late
+  1can-2h-2 RH4 C#5 gold=wrong_pitch pred=correct+held_long|late
+  1can-2h-2 LH45 F#2 gold=correct pred=correct+held_long|late
+  1can-2h-2 RH6 A4 gold=correct pred=missed
+  2can-1h-1 LH41 B2 gold=correct+held_long pred=correct
+  2can-1h-1 LH53 D2 gold=correct+late pred=correct
+  2can-1h-1 LH57 G2 gold=correct pred=correct+late
+  2can-2h-1 RH4 C#5 gold=correct pred=wrong_pitch
+  2can-2h-1 LH51 G3 gold=correct pred=wrong_pitch
+  2can-2h-1 LH52 B3 gold=correct pred=wrong_pitch
+  2can-2h-1 LH53 D2 gold=wrong_pitch pred=correct
+  2can-2h-1 RH7 B4 gold=correct pred=correct+late
+  2can-2h-1 LH57 G2 gold=correct pred=correct+late
+  2can-1h-2 LH17 G2 gold=correct pred=correct+late
+  2can-1h-2 LH29 A2 gold=correct+held_long pred=correct
+  2can-1h-2 LH42 F#3 gold=correct+held_long pred=correct
+  2can-1h-2 LH45 F#2 gold=correct pred=correct+late
+  2can-2h-2 LH21 D2 gold=wrong_pitch+held_long pred=missed
+  2can-2h-2 LH22 A2 gold=wrong_pitch pred=missed
+  2can-2h-2 LH23 D3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH24 F#3 gold=wrong_pitch pred=missed
+  2can-2h-2 LH29 A2 gold=missed pred=correct+held_long
+  2can-2h-2 LH30 E3 gold=missed pred=correct
+  2can-2h-2 LH31 A3 gold=missed pred=correct+held_long
+  2can-2h-2 LH32 C#4 gold=missed pred=correct
+  2can-2h-2 RH1 F#5 gold=correct pred=correct+late
+  2can-2h-2 LH33 D3 gold=correct pred=correct+late
+  2can-2h-2 RH3 D5 gold=correct pred=correct+late
+  2can-2h-2 LH41 B2 gold=correct pred=correct+late
+  2can-2h-2 LH53 D2 gold=correct pred=wrong_pitch+held_long
+  2can-2h-2 RH7 B4 gold=correct pred=correct+late
+  2can-2h-2 LH57 G2 gold=correct pred=correct+late
+  2can-2h-2 LH63 A3 gold=correct pred=wrong_pitch
+  3cmajor-1h-overlap6 RH6 A4 gold=correct+held_long pred=correct
+  3cmajor-2h-clean RH1 C4 gold=correct pred=missed
+  3cmajor-2h-clean LH3 E3 gold=correct pred=missed
+  3cmajor-2h-clean LH4 F3 gold=correct pred=missed
+  3cmajor-2h-wrong5 LH3 E3 gold=correct pred=missed
+  3emajor-1h-down-extra2 RH2 D#5 gold=correct pred=correct+held_long
+  3emajor-1h-down-overlap4 RH4 B4 gold=correct+held_long pred=correct
+  3emajor-1h-down-wrong3 RH3 C#5 gold=wrong_pitch pred=missed
+  3ode-1h-extra12 RH2 E4 gold=correct pred=missed
+  3ode-1h-extra4 RH1 E4 gold=correct pred=correct+held_long
+  3ode-1h-extra4 RH2 E4 gold=correct pred=wrong_pitch
+  3ode-1h-extra4 RH3 F4 gold=correct pred=wrong_pitch
+  3ode-1h-overlap7 RH7 E4 gold=correct+held_long pred=correct
+  3ode-1h-pause4 RH4 G4 gold=correct+late pred=missed
+  3ode-2h-extralh RH3 F4 gold=correct pred=wrong_pitch
+  3ode-2h-missrh9 RH9 C4 gold=missed pred=correct
+  3ode-2h-pause9 RH10 C4 gold=correct pred=missed
+  2can-2h-2 extras tp/fp/fn=0/1/0
+  3emajor-1h-down-extra2 extras tp/fp/fn=0/0/1
+  3ode-1h-extra4 extras tp/fp/fn=0/0/1
+  3ode-2h-extralh extras tp/fp/fn=0/0/1
+```

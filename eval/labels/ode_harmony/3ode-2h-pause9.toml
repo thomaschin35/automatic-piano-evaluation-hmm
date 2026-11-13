@@ -1,0 +1,14 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "ode_harmony"
+perfect = false
+# note RH9: both hands paused
+# note LH3: both hands paused
+
+[[error]]
+note = "RH9"
+type = "late"
+
+[[error]]
+note = "LH3"
+type = "late"

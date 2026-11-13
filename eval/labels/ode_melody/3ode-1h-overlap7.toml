@@ -1,0 +1,9 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "ode_melody"
+perfect = false
+# note RH7: overlap: key held while next note played on time
+
+[[error]]
+note = "RH7"
+type = "held_long"
