@@ -12,7 +12,7 @@ Written 2026-11-17 for whoever continues this project (a person or a model). Bra
   comment saying what it means.
 - **Reported per note:** correct / wrong pitch (key named) / missed, plus extra notes, a `late`
   flag (with reason "held" or "paused"), restarts, and mistakes made before a restart.
-  `held_long` (key not released under the next note) is defined in `eval/contract.py`.
+  `held_long` (key not released under the next note) is defined in `eval/contract.py` and detected conservatively (section 6.4).
 - **Evaluation harness:** `eval/`. Labels per take in `eval/labels/`, the take list in
   `eval/manifest.toml`, the shared label sheet `eval/sheets/labels_manual_errors.csv` (mixed CRLF/LF
   line endings: edit it line by line, never rewrite it with the csv module).
@@ -50,7 +50,7 @@ from the audio). Each step is in `eval/V3_LOG.md` with the full scoreboard.
 **These numbers are measured on takes that were looked at while fixing.** They say "no known
 failure on this piano, this phone, these three tunes", not "99% on new music". See section 5.
 
-Two-hand, 13 takes: goal F1 **1.000**, 7 / 7 clean (section 6.3). Held too long: section 6.4.
+Two-hand, 13 takes: goal F1 **1.000**, 7 / 7 clean (section 6.3). Held too long: reported, conservative, no false flags on real takes (section 6.4).
 
 ## 4. How to check a change
 
@@ -136,8 +136,26 @@ new notes 1.2 or more). Canon (the hardest two-hand piece) is still excluded; ad
 re-checked labels is the real two-hand test.
 
 ### 6.4 Held too long
+A conservative detector exists since 2026-11-17 (`held_evidence` / `held_flags` in
+`stft_hmm_v3.py`). For two consecutive single notes on different keys, both played correctly and
+the next one on time, it measures how far the previous key's fundamental falls in the 0.25 s after
+the next strike (`held_after_s`). A released key falls a median of 24-28 dB there; the two clearly
+held notes recorded fall 5-6 dB. A note is flagged when its fall is under a third
+(`held_drop_share`) of this recording's usual fall and it is still sounding.
 
-(Filled in when the held-too-long investigation reports.)
+| Test | Result |
+|---|---|
+| real takes, 511 pairs judged (no gold held notes) | 0 false flags; all other scores unchanged |
+| excluded overlap takes (not tuned on) | 2 of 3 flagged on the labelled note; the third (`3emajor-1h-down-overlap4`) is not, which matches the user's remark that it was not held |
+| synthetic `overlap` kind, 178 cases | 105 found, 0 false `held_long` |
+| other synthetic kinds | 2 new false flags in ~3,000, both on spliced copies of one take whose D#5 rings on its own |
+
+Limits: next notes shorter than 0.25 s are never judged; keys that ring by themselves look partly
+held; chords, same-key repeats and anything next to a wrong note, stray strike or restart are
+skipped; with pedal or heavy room ring the whole recording is skipped. `held_long` is reported but
+**not yet counted in the goal score** (`eval/metrics.py` counts only `late` as timing); add it
+when real held-note labels exist. Recording ten or so deliberate overlaps (and re-including the
+overlap takes after re-checking their labels by ear) is the next step.
 
 ### 6.5 Smaller items
 - The two remaining hard cases above (octave wrong note, quick double strike `4ode-1h-extra-d15-quick`:

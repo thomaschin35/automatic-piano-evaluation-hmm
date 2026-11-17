@@ -1450,11 +1450,11 @@
    },
    "held_long": {
     "tp": 0,
-    "fp": 0,
+    "fp": 1,
     "fn": 0,
-    "precision": null,
+    "precision": 0.0,
     "recall": null,
-    "f1": null
+    "f1": 0.0
    },
    "late": {
     "tp": 0,
@@ -1481,8 +1481,8 @@
     "f1": null
    },
    "n_cases": 216,
-   "exact": 1.0,
-   "false_flags": 0.0
+   "exact": 0.9953703703703703,
+   "false_flags": 0.004629629629629629
   },
   "extra_score": {
    "n_takes": 216,
@@ -1878,11 +1878,11 @@
    },
    "held_long": {
     "tp": 0,
-    "fp": 0,
+    "fp": 1,
     "fn": 0,
-    "precision": null,
+    "precision": 0.0,
     "recall": null,
-    "f1": null
+    "f1": 0.0
    },
    "late": {
     "tp": 237,
@@ -1909,8 +1909,115 @@
     "f1": null
    },
    "n_cases": 238,
-   "exact": 0.9957983193277311,
-   "false_flags": 0.004201680672268907
+   "exact": 0.9915966386554622,
+   "false_flags": 0.008403361344537815
+  },
+  "overlap": {
+   "n_takes": 178,
+   "n_notes": 2180,
+   "clean": 0,
+   "n_perfect": 0,
+   "played_pitch_accuracy": null,
+   "failed": [],
+   "error": {
+    "tp": 0,
+    "fp": 2,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "strict": {
+    "tp": 0,
+    "fp": 2,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "played": {
+    "tp": 0,
+    "fp": 2,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "timing": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "goal": {
+    "tp": 0,
+    "fp": 2,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "wrong_pitch": {
+    "tp": 0,
+    "fp": 2,
+    "fn": 0,
+    "precision": 0.0,
+    "recall": null,
+    "f1": 0.0
+   },
+   "missed": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "extra": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "held_long": {
+    "tp": 105,
+    "fp": 0,
+    "fn": 73,
+    "precision": 1.0,
+    "recall": 0.5898876404494382,
+    "f1": 0.7420494699646644
+   },
+   "late": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "restart": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "earlier": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+   },
+   "n_cases": 178,
+   "exact": 0.5898876404494382,
+   "false_flags": 0.011235955056179775
   },
   "stop_early": {
    "n_takes": 44,
@@ -2236,7 +2343,7 @@
    "located": 0.9963503649635036
   }
  },
- "seconds": 149.8,
+ "seconds": 155.2,
  "crashes": 0,
  "crash_examples": []
 }
