@@ -721,8 +721,10 @@ def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
 
 def held_evidence(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> list[tuple[PitchVerdict, float, bool, bool]]:
     """For every pair of consecutive notes whose previous key can be judged:
-    (verdict of the previous note, drop in dB of its key's fundamental from just before the next
-    strike to held_after_s after it, is the key still sounding then, did the next note come on time).
+    (verdict of the previous note, how far in dB its key's fundamental fell from just before the
+    next strike to the lowest it reached within held_after_s after it (a held key only fades; one
+    whose sound comes back was struck or rang again), is the key still sounding after the wait,
+    did the next note come on time).
 
     Not judged: the same key twice, chords, a note the score keeps sounding, a wrong or missed note
     on either side, a restart or a clear stray strike in between, a key already gone before the
@@ -762,7 +764,8 @@ def held_evidence(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> list[tu
         if fc < 3 or fc + wait + 2 > min(following, T) or not still_sounding(bundle, p, fa, fc, cfg):
             continue
         level = db[k - 1:k + 2].max(axis=0).astype(np.float64)
-        drop = float(level[fc - 3:fc].mean() - level[fc + wait - 1:fc + wait + 2].mean())
+        lowest = float(np.convolve(level[fc:fc + wait + 2], np.ones(3) / 3, mode="valid").min())
+        drop = float(level[fc - 3:fc].mean()) - lowest
         out.append((va[0], drop, still_sounding(bundle, p, fa, fc + wait + 3, cfg),
                     not any("late" in v.flags for v in vc)))
     return out
