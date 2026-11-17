@@ -147,13 +147,20 @@ def report_to_prediction(an, rep, spec: PieceSpec, offset_s: float, capabilities
         flags = frozenset(getattr(v, "flags", ()) or ())
         preds.append(NotePrediction(n.id, v.label, v.played, onset, flags))
 
-    def anchor(pos_index):
+    def anchor(pos_index, pitch):
+        """The note the extra follows: the last note so far of the hand that played it, taken to be
+        the hand whose last note lies nearest in pitch (with one hand: the note at pos_index)."""
         if pos_index is None:
             return None
-        ns = notes_at[pos_index]
-        return ns[0].id
+        last = {}
+        for i in sorted(notes_at):
+            if i <= pos_index:
+                last.update({n.hand: n for n in notes_at[i]})
+        if len(last) < 2:
+            return notes_at[pos_index][0].id
+        return min(last.values(), key=lambda n: (abs(n.pitch - pitch), n not in notes_at[pos_index])).id
 
-    extras = [ExtraNotePrediction(anchor(after), pitch, frame * spf + offset_s) for after, pitch, frame in rep.extras]
+    extras = [ExtraNotePrediction(anchor(after, pitch), pitch, frame * spf + offset_s) for after, pitch, frame in rep.extras]
     restarts = [(notes_at[a][0].id, notes_at[b][0].id) for a, b in rep.restarts]
     from eval.contract import EarlierMistake
     earlier = [EarlierMistake(att, next(n.id for n in notes_at[pi] if n.pitch == v.pitch), v.label,

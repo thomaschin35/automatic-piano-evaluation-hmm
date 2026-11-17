@@ -253,3 +253,95 @@ class SecondKeyAndStrayKey(unittest.TestCase):
         pred = self.adapter.predict_bundle(b3, self.spec)
         self.assertEqual(pred.notes[0].label, "correct")
         self.assertEqual([x.pitch for x in pred.extras], [65])
+
+
+class TwoVoices(unittest.TestCase):
+    """Two simultaneous notes an octave apart share partials: which key sent the energy?"""
+
+    @staticmethod
+    def spectrum_bundle(layers, score, T=150, sr=22050, n_bins=2049):
+        """stft_db at -80 dB with `layers` [(hz, first frame, frames, dB)] raised; `score` a list of
+        (onset pitches) per segment; every pitch present (0.8) while one of its layers sounds."""
+        from types import SimpleNamespace
+        import numpy as np
+        import stft_features
+        db = np.full((n_bins, T), -80.0, dtype=np.float32)
+        pres = {p: np.zeros(T) for p in range(36, 90)}
+        for hz, f0, n, level in layers:
+            k = int(round(hz * (n_bins - 1) * 2 / sr))
+            db[k, f0:f0 + n] = np.maximum(db[k, f0:f0 + n], level)
+        for hz, f0, n, level in layers:
+            p = int(round(69 + 12 * np.log2(hz / 440.0)))
+            if abs(stft_features.midi_to_frequency(p) - hz) < 1e-6 * hz:
+                pres[p][f0:f0 + n] = 0.8
+        segs = [SimpleNamespace(onset_pitches=tuple(ps), expected_pitches=tuple(sorted(ps))) for ps in score]
+        audio = SimpleNamespace(stft_db=db, sample_rate=sr, num_frames=T)
+        return SimpleNamespace(audio=audio, segments=segs, candidate_scores=pres)
+
+    def test_upper_note_must_bring_more_than_the_lower_key_alone(self):
+        """C3 alone (its 2nd partial at C4's fundamental, 10 dB under it), then C3 with C4 (C4's bin
+        5 dB over C3), then C3 alone again with C4 missed: only the middle strike is a C4 strike."""
+        import stft_features
+        import stft_hmm_v3 as m
+        hz = stft_features.midi_to_frequency
+        layers = []
+        for f0, with_c4 in ((10, False), (60, True), (110, False)):
+            layers += [(hz(48), f0, 35, -20.0), (hz(60), f0, 35, -15.0 if with_c4 else -30.0),
+                       (2 * hz(60), f0, 35, -40.0 if with_c4 else -50.0)]
+        cfg = m.V3Config()
+        written_alone = self.spectrum_bundle(layers, [(48, 64), (48, 60), (64,)])
+        got = m.raw_strikes(written_alone, 60, cfg)
+        self.assertEqual(len(got), 1)
+        self.assertLessEqual(abs(got[0] - 60), cfg.cluster_gap)
+        # the lower note of the octave is read off the spectrum as well
+        self.assertEqual(len(m.raw_strikes(written_alone, 48, cfg)), 3)
+        self.assertIn(48, m.harmonic_score_pitches(written_alone))
+        # C3 never written without C4 (a scale in octaves): nothing to compare with, the jump counts
+        in_octaves = self.spectrum_bundle(layers, [(48, 60), (64,)])
+        self.assertEqual(len(m.raw_strikes(in_octaves, 60, cfg)), 3)
+
+    def test_key_beyond_a_hand_span_is_the_other_hand(self):
+        import stft_hmm_v3 as m
+        cfg = m.V3Config()
+        pos = m.Position(0, 0.0, (65,), 0)
+        far = m.Event(0, {48: 0.79, 65: 0.86}, [(65, 0.86), (48, 0.79)])
+        vs, left = m.verdicts_for(far, pos, (), cfg)
+        self.assertEqual(([v.label for v in vs], left), (["correct"], [48]))
+        near = m.Event(0, {64: 0.80, 65: 0.86}, [(65, 0.86), (64, 0.80)])
+        vs, left = m.verdicts_for(near, pos, (), cfg)
+        self.assertEqual([(v.label, v.played) for v in vs], [("wrong_pitch", 64)])
+
+    def test_restrike_heard_only_at_the_octave_is_the_ringing_key(self):
+        """C4 rings; it is struck again and only its 2nd partial (C5's fundamental) shows an attack,
+        while C5's own presence stays where it was: that is C4 struck again, not a C5."""
+        from types import SimpleNamespace
+        import numpy as np
+        import stft_hmm_v3 as m
+        T = 80
+        pres = {p: np.zeros(T) for p in range(40, 90)}
+        onset = {p: np.zeros(T) for p in range(40, 90)}
+        pres[60][5:] = 0.7
+        pres[72][5:] = 0.3                              # C4's partial, left over by the front end
+        onset[60][5], onset[72][40] = 1.0, 0.6          # the re-strike reaches C5's onset score only
+        b = SimpleNamespace(audio=SimpleNamespace(num_frames=T), segments=[], candidate_scores=pres,
+                            candidate_onset_scores=onset)
+        evs = m.detect_events(b, m.V3Config())
+        self.assertEqual([(ev.frame, ev.pitch) for ev in evs], [(5, 60), (40, 60)])
+        self.assertEqual(evs[1].explained_by, {72: 60})
+        pres[72][41:] = 0.7                             # a real C5: its own presence rises
+        self.assertEqual([ev.pitch for ev in m.detect_events(b, m.V3Config())], [60, 72])
+
+    def test_extra_follows_the_last_note_of_the_hand_that_played_it(self):
+        from types import SimpleNamespace
+        from eval.adapters import report_to_prediction
+        import stft_hmm_v3 as m
+        spec = load_piece("ode_harmony")
+        positions = [m.Position(i, b, (), i) for i, b in enumerate(sorted({n.start_beat for n in spec.notes()}))]
+        verdicts = {}
+        for n in spec.notes():
+            i = next(p.index for p in positions if p.beat == n.start_beat)
+            verdicts.setdefault(i, []).append(m.PitchVerdict(n.pitch, "correct", n.pitch, 0))
+        an = SimpleNamespace(seconds_per_frame=0.01, positions=positions)
+        rep = SimpleNamespace(verdicts=verdicts, extras=[(1, 48, 50), (1, 66, 50)], restarts=[], earlier=[])
+        pred = report_to_prediction(an, rep, spec, 0.0, frozenset())
+        self.assertEqual([x.after_note_id for x in pred.extras], ["LH1", "RH2"])   # C3 after LH1, F#4 after RH2

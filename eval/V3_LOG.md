@@ -767,3 +767,41 @@ REAL-TAKE DISAGREEMENTS (9)
   3ode-2h-extralh extras tp/fp/fn=0/0/1
   4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
 ```
+
+## 2026-11-17 08:24  Two hands: lower note of a written interval read off the spectrum, other hand's key is an extra, octave-only re-strike is the ringing key
+
+```
+SCOREBOARD  model=v3  (149.8s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all               104  1328 |   0.99   0.99   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.97  1.00   -   | 37/37
+  mono               91  1099 |   0.99   0.99   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.96  1.00   -   | 30/30
+  two_hand           13   229 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 7/7
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  mono_round2        46   550 |   0.99   0.98   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.95  1.00   -   | 9/9
+  two_hand_p3         6   108 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 2/2
+  mono counts, found/false/not found: wrong=23/0/0  missed=22/0/0  extra=13/0/1  late=18/0/0  held=0/0/0  restart=8/0/0  before-restart mistakes=1/0/0
+
+ONSET-ONLY (pitch term off): 22/22 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          22 |  1.00 |        -     -     -   |    -       -   | 0.00
+  sub                          1040 |  1.00 |       1.00  1.00  1.00 |    -       -   | 0.00
+  shift                         126 |  0.90 |       0.97  0.91  0.94 |    -       -   | 0.10
+  miss_ins_step                 238 |  1.00 |       1.00  1.00  1.00 |    -       -   | 0.00
+  miss_ins_repeat               238 |  1.00 |       1.00  1.00  1.00 |    -       -   | 0.00
+  miss_del                      216 |  1.00 |       1.00  1.00  1.00 |    -       -   | 0.00
+  extra_score                   216 |  0.97 |       1.00  1.00  1.00 |   1.00     -   | 0.03
+  extra_dup                     216 |  0.96 |       0.00   -    0.00 |   0.97     -   | 0.04
+  hold                          238 |  1.00 |        -     -     -   |    -      1.00 | 0.00
+  gap                           238 |  1.00 |        -     -     -   |    -      1.00 | 0.00
+  stop_early                     44 |  1.00 |       1.00  1.00  1.00 |    -       -   | 0.00
+  restart                       298 |  1.00 |        -     -     -   |    -       -   | 0.00 | restart located  1.00
+  restart_wrong                 274 |  1.00 |        -     -     -   |    -       -   | 0.00 | restart located  1.00 | before-restart mistake P  1.00 R  1.00
+
+REAL-TAKE DISAGREEMENTS (1)
+  4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
+```
