@@ -103,6 +103,10 @@ class V3Config:
     # the length of the piece instead of with its square
     max_skip: int = 16                # a forward jump passes over at most this many notes
     back_bars: int = 4                # a restart goes back at most this many bars, or to the very beginning
+    # --- held too long (overlap): the previous key still down under a next note that came on time
+    held_after_s: float = 0.25        # judged this long after the next strike (a shorter overlap is ordinary legato)
+    held_drop_share: float = 0.33     # held = the key's level fell by less than this share of what the
+                                      #   recording's keys usually fall by once the next note is struck
 
 
 @dataclass
@@ -619,7 +623,7 @@ class PitchVerdict:
     played: int | None = None
     frame: int | None = None
     corrected: bool = False        # a wrong key first, then the right one
-    flags: set = field(default_factory=set)      # late (held_long = overlap is not detected yet)
+    flags: set = field(default_factory=set)      # late, held_long (see timing_flags, held_flags)
     late_reason: str = ""          # "held" (previous key kept down) | "paused" (silence before the note)
     late_beats: float = 0.0        # how many beats late
 
@@ -710,6 +714,75 @@ def timing_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
             v.late_beats = float(delay)
 
 
+def held_evidence(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> list[tuple[PitchVerdict, float, bool, bool]]:
+    """For every pair of consecutive notes whose previous key can be judged:
+    (verdict of the previous note, drop in dB of its key's fundamental from just before the next
+    strike to held_after_s after it, is the key still sounding then, did the next note come on time).
+
+    Not judged: the same key twice, chords, a note the score keeps sounding, a wrong or missed note
+    on either side, a restart or a clear stray strike in between, a key already gone before the
+    next strike, a next note shorter than the wait, and a key whose fundamental the notes that
+    follow also fill (an overtone of theirs, or too close in frequency to read apart)."""
+    db = getattr(bundle.audio, "stft_db", None)
+    if db is None or not rep.by_event:
+        return []
+    T, n_bins = bundle.audio.num_frames, db.shape[0]
+    wait = max(1, int(round(cfg.held_after_s / an.seconds_per_frame)))
+    extra_frames = {f for _, _, f in rep.extras}
+
+    def key_bin(pitch: int) -> int:
+        return int(round(stft_features.midi_to_frequency(pitch) * (n_bins - 1) * 2 / bundle.audio.sample_rate))
+
+    out = []
+    for a, c in zip(an.matches, an.matches[1:]):
+        if c.kind == "back" or c.position != a.position + 1:
+            continue
+        va, vc = rep.by_event[a.event], rep.by_event[c.event]
+        if len(va) != 1 or len(vc) != 1 or va[0].label != "correct" or vc[0].label != "correct":
+            continue
+        p = va[0].pitch
+        written = set(bundle.segments[an.positions[c.position].segment_index].expected_pitches) | {vc[0].pitch}
+        k = key_bin(p)
+        if p in written or k < 1 or k + 2 > n_bins:
+            continue
+        # an overtone of a following note lands on this key's fundamental; the main lobe of a
+        # neighbour closer than 3 bins reaches the bins read here
+        if any(p - q in OVERTONE_OFFSETS or abs(key_bin(q) - k) < 3 for q in written):
+            continue
+        if any(an.events[e].salience >= cfg.extra_report_salience or an.events[e].frame in extra_frames
+               for e in range(a.event + 1, c.event)):
+            continue
+        fa, fc = an.events[a.event].frame, an.events[c.event].frame
+        following = an.events[c.event + 1].frame if c.event + 1 < len(an.events) else T
+        if fc < 3 or fc + wait + 2 > min(following, T) or not still_sounding(bundle, p, fa, fc, cfg):
+            continue
+        level = db[k - 1:k + 2].max(axis=0).astype(np.float64)
+        drop = float(level[fc - 3:fc].mean() - level[fc + wait - 1:fc + wait + 2].mean())
+        out.append((va[0], drop, still_sounding(bundle, p, fa, fc + wait + 3, cfg),
+                    not any("late" in v.flags for v in vc)))
+    return out
+
+
+def held_flags(an: Analysis, rep: "Report", bundle, cfg: V3Config) -> None:
+    """Held too long = the key was not released when the next note was played on time: two keys
+    sound together where the score has one after the other. The held note gets the flag. (A key
+    kept down while the next note comes late is `late` on that next note: see timing_flags.)
+
+    A released key is damped at once, a held one goes on fading slowly. How far a key falls in
+    held_after_s depends on the piano, the room and the phone, so each pair is compared with the
+    recording itself: the usual fall is the median over its judged pairs, nearly all of them
+    released. A note is held when its key is still sounding after the wait and has fallen by less
+    than held_drop_share of the usual. A recording where most keys keep sounding (pedal, strong
+    room ring, everything overlapped) has no released notes to compare with: nothing is flagged."""
+    pairs = held_evidence(an, rep, bundle, cfg)
+    if not pairs or 2 * sum(sounding for _, _, sounding, _ in pairs) > len(pairs):
+        return
+    usual = float(np.median([drop for _, drop, _, _ in pairs]))
+    for v, drop, sounding, on_time in pairs:
+        if sounding and on_time and drop < cfg.held_drop_share * usual:
+            v.flags.add("held_long")
+
+
 def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     """Turn the alignment into verdicts.
 
@@ -780,6 +853,7 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
     rep = Report(verdicts, extras, restarts, visits, by_event, attempt_of, earlier)
     if bundle is not None:
         timing_flags(an, rep, bundle, cfg)
+        held_flags(an, rep, bundle, cfg)
     return rep
 
 
@@ -798,6 +872,8 @@ def print_report(an: Analysis, rep: Report) -> None:
             if "late" in v.flags:
                 why = {"held": "the previous key was held down", "paused": "after a pause"}.get(v.late_reason, "")
                 again += f"  LATE by {v.late_beats:.1f} beats" + (f" ({why})" if why else "")
+            if "held_long" in v.flags:
+                again += "  HELD TOO LONG (still sounding under the next note)"
             print(f"  note {pos.index + 1:3d}  beat {pos.beat:5.2f}  {midi_to_note_name(v.pitch):<4} {when}  {what}{again}")
     for after, pitch, frame in rep.extras:
         where = f"after note {after + 1}" if after is not None else "before the first note"

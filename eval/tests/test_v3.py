@@ -1,5 +1,6 @@
 """v3 behaviour on a synthetic perfect performance and edits of it (no audio needed)."""
 from __future__ import annotations
+import dataclasses
 import unittest
 
 from eval import synth
@@ -77,11 +78,11 @@ class V3OnFakePerformance(unittest.TestCase):
 
     def test_held_gap_is_late_too_and_never_held_long(self):
         """Late = the note started late, whatever the reason. Keeping the previous key down and
-        waiting is `late` on the next note; held_long (overlap) is not something v3 emits."""
+        waiting is `late` on the next note, never held_long."""
         for c, pred, ev in self.run_kind("hold"):
             self.assertEqual((ev.counts["late.tp"], ev.counts["late.fp"], ev.counts["late.fn"]), (1, 0, 0), str(c.meta))
             self.assertFalse(any("held_long" in n.flags for n in pred.notes), str(c.meta))
-        self.assertNotIn("held_long", get_adapter("v3").capabilities)
+        self.assertIn("held_long", get_adapter("v3").capabilities)
 
 
 if __name__ == "__main__":
@@ -157,3 +158,63 @@ class WindowedAlignment(unittest.TestCase):
         want, want_cost = m.align_dense(E, P, cfg, spb, spf, dense)
         self.assertEqual([(x.event, x.position, x.kind) for x in got], [(x.event, x.position, x.kind) for x in want])
         self.assertAlmostEqual(cost, want_cost, places=9)
+
+
+def ringing_bundle(spec, release_db_per_frame=3.0):
+    """fake_bundle with a spectrum: each key sounds its first six harmonics while it is down and,
+    once released, is damped by release_db_per_frame (a piano key falls fast when let go)."""
+    import numpy as np
+    import stft_features as sf
+    from eval.cache import rescore
+    b = fake_bundle(spec, frames_per_note=20, in_rhythm=True)
+    T, n_bins = b.audio.num_frames, 2049
+    db = np.full((n_bins, T), -80.0, dtype=np.float32)
+    frames = np.arange(T)
+    for n in spec.notes():
+        on = int(round(20 * (n.start_beat - spec.notes()[0].start_beat)))
+        off = int(round(20 * (n.end_beat - spec.notes()[0].start_beat)))
+        lvl = np.where(frames < on, -80.0, np.where(frames < off, -10.0 - 0.3 * (frames - on),
+                                                     -10.0 - 0.3 * (off - on) - release_db_per_frame * (frames - off)))
+        f0 = sf.midi_to_frequency(n.pitch) * (n_bins - 1) * 2 / b.audio.sample_rate
+        for h in range(1, 7):
+            k = int(round(h * f0))
+            if k + 1 < n_bins:
+                db[k - 1:k + 2] = np.maximum(db[k - 1:k + 2], np.maximum(lvl - 3.0 * h, -80.0))
+    b.audio = dataclasses.replace(b.audio, stft_db=db)
+    return rescore(b, spec.to_score_model())
+
+
+class HeldTooLong(unittest.TestCase):
+    """held_long = the key was not released when the next note came on time; it goes on the held note."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.spec = load_piece("ode_melody")
+        cls.bundle = ringing_bundle(cls.spec)
+        cls.adapter = get_adapter("v3")
+        cls.cases = list(synth.generate("fake", cls.bundle, cls.spec, ("clean", "overlap", "hold")))
+
+    def held(self, pred):
+        return [n.note_id for n in pred.notes if "held_long" in n.flags]
+
+    def test_clean_performance_has_no_held_note(self):
+        c = next(c for c in self.cases if c.kind == "clean")
+        self.assertEqual(self.held(self.adapter.predict_bundle(c.bundle, c.spec)), [])
+
+    def test_key_sounding_under_the_next_note_is_held_long(self):
+        cases = [c for c in self.cases if c.kind == "overlap"]
+        self.assertTrue(cases)
+        found = 0
+        for c in cases:
+            pred = self.adapter.predict_bundle(c.bundle, c.spec)
+            got = self.held(pred)
+            self.assertLessEqual(set(got), {c.gold.errors[0].note_id}, str(c.meta))     # never on another note
+            self.assertFalse(any("late" in n.flags for n in pred.notes), str(c.meta))
+            found += got == [c.gold.errors[0].note_id]
+        self.assertGreaterEqual(found, len(cases) - 2)       # a next note shorter than the wait is not judged
+
+    def test_late_next_note_is_late_not_held_long(self):
+        for c in (c for c in self.cases if c.kind == "hold"):
+            pred = self.adapter.predict_bundle(c.bundle, c.spec)
+            self.assertEqual(self.held(pred), [], str(c.meta))
+            self.assertIn(c.gold.errors[0].note_id, [n.note_id for n in pred.notes if "late" in n.flags], str(c.meta))

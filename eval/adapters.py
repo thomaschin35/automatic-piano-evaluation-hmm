@@ -86,7 +86,7 @@ class V2Adapter:
 
 class V3Adapter:
     name = "v3"
-    capabilities = frozenset({"wrong_pitch", "missed", "extra", "late"})      # held_long (overlap): not yet
+    capabilities = frozenset({"wrong_pitch", "missed", "extra", "late", "held_long"})
     onset_only = {"sub_cost": 0.0}           # pitch-blind alignment: any event may stand for any note
 
     def config(self) -> dict:

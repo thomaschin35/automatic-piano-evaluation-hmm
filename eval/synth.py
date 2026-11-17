@@ -9,7 +9,9 @@ that note; only a re-strike of a neighbouring note is "extra".
   * wrong score  - keep the audio, change the score it is graded against
                    (sub, shift, miss_ins_step, miss_ins_repeat, extra_score);
   * spliced time - keep the score, cut / repeat / reorder the feature frames at note boundaries
-                   (miss_del, extra_dup, hold, gap, stop_early, restart).
+                   (miss_del, extra_dup, hold, gap, stop_early, restart);
+  * held key     - keep the score and the timing, let the previous key go on sounding under the
+                   next note (overlap).
 Note boundaries come from `reference_onsets`, a model-independent dynamic programme over the
 per-pitch onset scores of the clean take.
 """
@@ -19,14 +21,16 @@ import dataclasses
 
 import numpy as np
 
-from eval.cache import rescore, splice
+from eval.cache import rescore, splice, sustain
 from eval.labels import GoldError, TakeLabels
 from eval.pieces import PieceSpec, all_pieces
 
 MONO_PIECES = tuple(n for n, s in all_pieces().items() if s.is_mono)
 KINDS = ("clean", "sub", "shift", "miss_ins_step", "miss_ins_repeat", "miss_del",
-         "extra_score", "extra_dup", "hold", "gap", "stop_early", "restart", "restart_wrong")
+         "extra_score", "extra_dup", "hold", "gap", "overlap", "stop_early", "restart", "restart_wrong")
 PRE = 3            # frames before an onset peak that belong to the new note (attack rise)
+HELD_FADE_DB = 0.5  # dB per frame (about 20 dB a second) a key that is kept down fades by: as
+                    # measured on the two recorded overlaps (3cmajor-1h-overlap6, 3ode-1h-overlap7)
 
 
 @dataclass
@@ -171,6 +175,16 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
                 continue
             frames = np.concatenate([np.arange(0, cut[i]), np.resize(src, pause), np.arange(cut[i], T)])
             yield _case(kind, take_id, splice(bundle, frames), spec, gold, note=i, pause_frames=pause)
+
+    if "overlap" in kinds:                         # note i-1 is not released: its key sounds on under
+        for i in range(1, n):                      # note i, which starts on time -> held_long on note i-1
+            src = min(on[i - 1] + 4, cut[i] - 2)   # note i-1 in full sound: after its attack, before the next
+            if P[i] == P[i - 1] or src <= on[i - 1]:
+                continue
+            frames = np.arange(src + 1, ends[i])   # it fades from the next strike on, to the end of note i
+            fade = HELD_FADE_DB * np.maximum(frames - on[i], 0)
+            yield _case("overlap", take_id, sustain(bundle, P[i - 1], src, frames, fade),
+                        spec, [GoldError("held_long", note_id=nid(i - 1))], note=i)
 
     if "stop_early" in kinds:                      # player stops; the rest is never played
         for j in sorted({n // 2, n - 2}):
