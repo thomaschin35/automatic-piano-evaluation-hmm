@@ -5,5 +5,4 @@ perfect = false
 
 [[error]]
 note = "RH3"
-type = "wrong_pitch"
-played = "G4"
+type = "missed"
