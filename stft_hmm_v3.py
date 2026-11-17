@@ -64,6 +64,7 @@ class V3Config:
     # read straight off the spectrum: the fundamental's level must jump and stand out as a peak
     raw_rise_db: float = 6.0
     raw_peak_db: float = 10.0
+    hand_span: int = 12               # one hand reaches about an octave: a key further off was struck by the other hand
     # --- alignment costs (lower is better)
     sub_cost: float = 3.0             # event explains a position with the wrong pitch
     sub_cost_near: float = 2.5        # ... when it is a neighbouring key (within a whole tone): the usual slip
@@ -180,9 +181,9 @@ def _spectral_jumps(bundle, hz: float, cfg: V3Config):
     k = int(round(hz * (n_bins - 1) * 2 / bundle.audio.sample_rate))
     if k < 9 or k + 9 >= n_bins or T < 12:
         return [], None, None
-    # the bins either side belong to the note too, unless the next semitone is under 2.5 bins away
-    # (low notes): its main lobe would then leak into them
-    r = 1 if k * (2.0 ** (1.0 / 12.0) - 1.0) >= 2.5 else 0
+    # the bins either side belong to the note too, unless the next semitone is under 3 bins away (low
+    # notes): the window's main lobe spans 2 bins either side, so that note would reach into them
+    r = 1 if k * (2.0 ** (1.0 / 12.0) - 1.0) >= 3.0 else 0
     level = db[k - r:k + r + 1].max(axis=0).astype(np.float64)
     around = np.median(np.vstack([db[k - 8:k - 3], db[k + 4:k + 9]]).astype(np.float64), axis=0)
 
@@ -313,6 +314,16 @@ def detect_events(bundle, cfg: V3Config, scales: dict[int, float] | None = None)
         # 0 (the recording's quiet floor) to 1 (its loud passages): nothing is struck at the floor
         return energy is not None and float(np.max(energy[f:f + 4])) < cfg.strike_energy
 
+    def partial_restrike(p: int, q: int, f: int) -> bool:
+        # key p sounds before and after frame f; its partial q has no plain attack of its own and is
+        # no stronger after f than before
+        pres_p, pres_q = bundle.candidate_scores.get(p), bundle.candidate_scores[q]
+        if pres_p is None or f < 6 or float(bundle.candidate_onset_scores[q][f]) >= cfg.onset_full:
+            return False
+        before = [float(np.median(x[f - 6:f - 1])) for x in (pres_p, pres_q)]
+        after = [float(np.median(x[f + 1:min(T, f + 1 + cfg.presence_window)])) for x in (pres_p, pres_q)]
+        return min(before[0], after[0]) >= cfg.restrike_presence and after[1] <= cfg.overtone_ratio * before[1]
+
     for q in harmonic_score_pitches(bundle):
         for f in raw_strikes(bundle, q, cfg):
             if not silent(f):
@@ -379,6 +390,18 @@ def detect_events(bundle, cfg: V3Config, scales: dict[int, float] | None = None)
         if scales:
             seen_raw = {q for q in strikes if q not in confirmed}       # those carry a nominal level already
             strikes = {q: s * (1.0 if q in seen_raw else scales.get(q, 1.0)) for q, s in strikes.items()}
+        # a key struck again while it still rings may show the attack only at its upper partials (its
+        # fundamental is loud already): a jump at a partial of a sounding key that leaves the partial
+        # no stronger than it was before is that key struck again, not a new note
+        for q in sorted(kept):
+            src = next((q - off for off in OVERTONE_OFFSETS
+                        if q in confirmed and q - off not in strikes and partial_restrike(q - off, q, frames[q])), None)
+            if src is not None:
+                kept[kept.index(q)] = src
+                explained[q], strikes[src], frames[src] = src, strikes[q], frames[q]
+                confirmed.add(src)
+                if (frames[q], q) in full:
+                    full.add((frames[q], src))
         primary = sorted(((q, strikes[q]) for q in kept), key=lambda x: -x[1])
         events.append(Event(frames[primary[0][0]], strikes, primary, explained, set(strikes) - confirmed,
                             {q for q in strikes if (frames[q], q) in full}))
@@ -708,7 +731,8 @@ def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg
         s = struck(event, p, pos.pitches, cfg)
         if s > 0.0:
             # two keys at once with the stray one at least as strong: the note was not played cleanly
-            stray = [(q, sq) for q, sq in free if q not in used and q not in prev_pitches and sq >= cfg.smudge_ratio * s]
+            stray = [(q, sq) for q, sq in free if q not in used and q not in prev_pitches and sq >= cfg.smudge_ratio * s
+                     and abs(q - p) <= cfg.hand_span]    # further away it is the other hand's key: an extra
             # an expected pitch seen only as a jump in the spectrum loses to a clearly struck other key
             doubtful = p in event.raw_only and any(sq >= cfg.sub_min_salience for _, sq in stray)
             stray = [x for x in stray if x[1] >= cfg.sub_min_salience] if doubtful else stray
