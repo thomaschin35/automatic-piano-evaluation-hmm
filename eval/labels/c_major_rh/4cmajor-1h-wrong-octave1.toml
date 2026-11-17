@@ -7,3 +7,7 @@ perfect = false
 note = "RH1"
 type = "wrong_pitch"
 played = "C5"
+
+[[error]]
+note = "RH2"
+type = "late"
