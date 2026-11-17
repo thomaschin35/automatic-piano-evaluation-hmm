@@ -87,7 +87,7 @@ class V3Config:
     back_cost_any: float = 7.0        # going back to any other earlier note
     back_min_notes: int = 2           # replaying fewer notes than this is a re-strike (an extra), not a restart
     # --- timing verdicts
-    late_beats: float = 0.4           # a note that starts this many beats after its place is late ...
+    late_beats: float = 0.33          # a note that starts a third of a beat after its place is late ...
     late_fraction: float = 0.2        # ... or this fraction of the written gap, whichever is larger (long notes drift more)
     sounding_level: float = 0.5       # reason for a late note: the previous key still sounding (>= this x its
     sounding_frames: int = 5          #   level over these frames before the strike, and the room not silent)
@@ -98,6 +98,8 @@ class V3Config:
     extra_report_salience: float = 0.40
     restrike_report_ratio: float = 0.6   # a fainter unmatched strike is still an extra when it repeats the
                                          # neighbouring note's key at this fraction of that note's strength
+    correction_max_beats: float = 1.5    # a wrong key is "corrected" by the note that follows within this many
+                                         # beats; a stray key further ahead of the note is an extra instead
     tempo_passes: int = 2
     # --- search window: the alignment only considers moves a player makes, so its work grows with
     # the length of the piece instead of with its square
@@ -203,7 +205,10 @@ def restruck(bundle, pitch: int, f: int, cfg: V3Config) -> bool:
     level = db[k - 1:k + 2].max(axis=0).astype(np.float64)
     if level[f + 1:f + 4].mean() - level[f - 4:f - 1].mean() < cfg.restrike_rise_db:
         return False
-    return float(en[f + 1:f + 4].max() - en[f - 4:f - 1].min()) >= cfg.restrike_energy
+    before = float(en[f - 4:f - 1].min())
+    if before > 1.0 - cfg.restrike_energy:             # the energy scale tops out at the recording's loud
+        return True                                    # level: there it cannot show the rise, so it is not asked
+    return float(en[f + 1:f + 4].max()) - before >= cfg.restrike_energy
 
 
 def key_scales(events: list[Event], cfg: V3Config) -> dict[int, float]:
@@ -750,13 +755,23 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
             range(0, m.position) if last_pos is None else range(0)
         for q in passed:                                 # notes jumped over in this attempt
             touches.setdefault(q, []).append((attempt, None))
-        vs, _ = verdicts_for(ev, pos, prev_pitches, cfg)
+        vs, left = verdicts_for(ev, pos, prev_pitches, cfg)
         prev_set = set(an.positions[last_pos].pitches) if last_pos is not None else set()
+        # a second key struck together with the note (a real attack of its own, as clear as any
+        # reported extra, and not the previous note still ringing) is an extra note
+        # (only beside a correctly struck note: next to a wrong one the leftover key is ambiguous; and
+        # a key an overtone interval from an expected one may be that note's partial or its source)
+        if all(v.label == "correct" for v in vs):
+            extras += [(last_pos, q, ev.frame) for q in left
+                       if q in ev.full and q not in prev_pitches and ev.strikes[q] >= cfg.extra_report_salience
+                       and not any(abs(q - p) in OVERTONE_OFFSETS for p in pos.pitches)]
         for x in pending:
             if not clear(x, [last_ev, ev]):
                 continue
             target = min(vs, key=lambda v: abs(v.pitch - x.pitch))
-            if x.pitch in prev_set or x.pitch in pos.pitches or m.kind == "back" or target.label != "correct":
+            lead = (ev.frame - x.frame) * an.seconds_per_frame / an.seconds_per_beat[e]
+            if (x.pitch in prev_set or x.pitch in pos.pitches or m.kind == "back" or target.label != "correct"
+                    or lead > cfg.correction_max_beats):
                 extras.append((last_pos, x.pitch, x.frame))
             else:
                 target.label, target.played, target.corrected = "wrong_pitch", x.pitch, True

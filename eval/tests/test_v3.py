@@ -157,3 +157,38 @@ class WindowedAlignment(unittest.TestCase):
         want, want_cost = m.align_dense(E, P, cfg, spb, spf, dense)
         self.assertEqual([(x.event, x.position, x.kind) for x in got], [(x.event, x.position, x.kind) for x in want])
         self.assertAlmostEqual(cost, want_cost, places=9)
+
+
+class SecondKeyAndStrayKey(unittest.TestCase):
+    """Extras that are not a separate event: a key struck together with the right note, and a key
+    pressed well before the note it would otherwise be read as 'corrected into'."""
+
+    def setUp(self):
+        import copy
+        self.spec = load_piece("ode_melody")
+        self.bundle = copy.deepcopy(fake_bundle(self.spec, frames_per_note=20, in_rhythm=True))
+        self.adapter = get_adapter("v3")
+
+    def test_key_struck_together_with_the_note_is_an_extra(self):
+        b, f = self.bundle, 3 * 20                          # RH4 (G4) starts at frame 60
+        b.candidate_scores[69][f:f + 20] = 0.6              # A4 brushed with it
+        b.candidate_onset_scores[69][f + synth.PRE] = 1.0
+        pred = self.adapter.predict_bundle(b, self.spec)
+        self.assertEqual([n.label for n in pred.notes], ["correct"] * 15)
+        self.assertEqual([x.pitch for x in pred.extras], [69])
+
+    def test_key_pressed_long_before_the_first_note_is_an_extra_not_a_correction(self):
+        from eval.cache import splice
+        import numpy as np
+        b = self.bundle
+        T = b.audio.num_frames
+        b2 = splice(b, np.concatenate([np.arange(0, 20), np.arange(0, T)]))    # the first note's slot twice
+        for p in (64, 65):                                  # the first copy sounds F4, then silence, not E4
+            b2.candidate_scores[p] = b2.candidate_scores[p].copy()
+            b2.candidate_onset_scores[p] = b2.candidate_onset_scores[p].copy()
+        b2.candidate_scores[65][0:8], b2.candidate_scores[64][0:20] = 0.9, 0.0
+        b2.candidate_onset_scores[65][synth.PRE], b2.candidate_onset_scores[64][0:20] = 1.0, 0.0
+        b3 = splice(b2, np.concatenate([np.arange(0, 20), np.full(40, 19), np.arange(20, b2.audio.num_frames)]))
+        pred = self.adapter.predict_bundle(b3, self.spec)
+        self.assertEqual(pred.notes[0].label, "correct")
+        self.assertEqual([x.pitch for x in pred.extras], [65])
