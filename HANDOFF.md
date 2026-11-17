@@ -50,7 +50,7 @@ from the audio). Each step is in `eval/V3_LOG.md` with the full scoreboard.
 **These numbers are measured on takes that were looked at while fixing.** They say "no known
 failure on this piano, this phone, these three tunes", not "99% on new music". See section 5.
 
-Two-hand and held-too-long: see section 6.
+Two-hand, 13 takes: goal F1 **1.000**, 7 / 7 clean (section 6.3). Held too long: section 6.4.
 
 ## 4. How to check a change
 
@@ -117,9 +117,27 @@ It was not done on 2026-11-17 because the current rules score 0.99 on all existi
 change can only be shown to help on new recordings; do it together with 6.1.
 
 ### 6.3 Two-hand
+Two-hand goal F1 went from 0.556 to **1.000** on 2026-11-17; all 7 clean two-hand takes now pass, and
+one-hand results are unchanged. **These are the same 13 takes the causes were diagnosed on**, so
+the number is optimistic. The new rules are narrow (the re-strike rule changes 2 events in all
+104 takes), and each follows from how two piano notes sound together:
+
+| Failure | Cause | Rule now |
+|---|---|---|
+| left-hand E3 under an octave, missed | its onset score peaks at 0.43; only the upper note of a written interval was read off the raw spectrum | the lower note of a written octave/fifth/third is also read off the spectrum, if the front end hears it sounding afterwards |
+| F3 missed | its raw level took the loudest of 3 bins, and the neighbour bin held E3 still ringing | where the next semitone is under 3 bins away (the Hann main lobe), only the centre bin is used |
+| first note of the take missed | the "before" window repeated the first frame | before the start of the recording counts as quiet |
+| missed C4 read as played | it was C3's own 2nd partial (same -4 dB ratio as C3 alone) | an upper note during a lower-key strike must beat the leanest strike of that key in this recording by `raw_rise_db` |
+| other hand's extra C3 read as a smudge | | a stray key more than `hand_span` (12) semitones away is the other hand: an extra, anchored to that hand's last note |
+| C4 re-struck after a pause read as C5 | its fundamental rose only 2 dB, its octave 10 dB | a candidate with no plain onset, no presence gain and an overtone interval above a ringing key is that key struck again |
+
+Fragile margin: the last rule needs a presence tolerance above 1.0 (the case measures 1.03; real
+new notes 1.2 or more). Canon (the hardest two-hand piece) is still excluded; adding it back with
+re-checked labels is the real two-hand test.
+
 ### 6.4 Held too long
 
-(Sections 6.3 and 6.4 are filled in below once the two parallel investigations report.)
+(Filled in when the held-too-long investigation reports.)
 
 ### 6.5 Smaller items
 - The two remaining hard cases above (octave wrong note, quick double strike `4ode-1h-extra-d15-quick`:
