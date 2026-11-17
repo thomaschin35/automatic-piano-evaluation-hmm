@@ -36,7 +36,7 @@ frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
    matched events is compared with the written beat distance at the local tempo, with separate
    allowances for a dropped note that drops its time and an added note that adds its own.
 3. **Verdicts.** Read off the path. A wrong key followed by the right one is reported as a wrong
-   pitch on that note ("then corrected"). A note that starts 0.4 beats or more after its place
+   pitch on that note ("then corrected"). A note that starts a third of a beat or more after its place
    (or 20% of the written gap, for long notes) is late, also right after a missed note.
 4. **Soft repeats.** A key struck again while it is still ringing barely moves its onset score.
    It is accepted from a lower score when the key's own level jumps (>= 3 dB) and the overall
@@ -61,25 +61,26 @@ frame-level chain of `stft_hmm_v2.py`, which stays in the repo as the baseline.
 .venv/bin/python stft_hmm_v3.py --audio recordings/eval-interviews/processed/2ode-1h-wrong.wav --model ode_melody
 ```
 
-## Current status (2026-11-13)
+## Current status (2026-11-17)
 
-58 labelled takes from three players: 45 monophonic, 13 two-hand. Canon and the three "overlap"
+**Start with [HANDOFF.md](HANDOFF.md)**: scores, how general they are, and the open work.
+
+104 labelled takes: 91 one-hand (four players), 13 two-hand. Canon and the three "overlap"
 takes are excluded (`exclude` in `eval/manifest.toml` says why).
 
-| Monophonic, existing takes | before | now |
+| One-hand, 91 takes | 2026-11-13 | now |
 |---|---|---|
-| Goal F1 (all classes) | 0.87 | **1.00** |
-| wrong pitch, found / false / not found | 13 / 2 / 1 | 14 / 0 / 0 |
-| missed | 10 / 2 / 0 | 10 / 0 / 0 |
-| extra | 2 / 0 / 2 | 4 / 0 / 0 |
-| late | 6 / 2 / 0 | 6 / 0 / 0 |
-| clean takes with no flag | 21 / 21 | 21 / 21 |
+| Goal F1 (all classes) | 0.87 | **0.99** |
+| wrong pitch, found / false / not found | 23 / 3 / 1 | 23 / 0 / 0 |
+| missed | 21 / 7 / 0 | 22 / 0 / 0 |
+| extra | 9 / 0 / 5 | 13 / 0 / 1 |
+| late | 15 / 2 / 2 | 18 / 0 / 0 |
+| clean takes with no flag | 29 / 30 | 30 / 30 |
 
-These takes were used to find and fix the mistakes, so 1.00 is not a measure of how v3 does on
-new playing. The held-out measure is round 2 ([eval/SHOT_LIST_2.md](eval/SHOT_LIST_2.md), file
-prefix `4`, scoreboard row `mono_round2`). Two-hand takes are unchanged (goal F1 0.56) and are
-not the current priority. The synthetic suite is level or better on every kind except two that
-fell by 0.01.
+Every take here was looked at while fixing, so this is "no known failure", not a measured error
+rate on new music. `python -m eval.generalise` shows the remaining fragility is in three hard takes
+rather than spread over pieces or players. The new-piece test (round 3,
+[eval/SHOT_LIST_3.md](eval/SHOT_LIST_3.md)) is set up but not recorded.
 
 ## Earlier results (two players, before the taxonomy change)
 
@@ -150,7 +151,8 @@ strike (`onset_full`, `ghost_ratio`, `extra_report_salience`) and the timing thr
 .venv/bin/python -m eval.cli check --model v3            # unit tests + real takes + synthetic suite
 .venv/bin/python -m eval.cli check --model v3 --accept   # store as the accepted scoreboard
 .venv/bin/python -m eval.cli run --model v3              # full run with per-note CSV, for `compare`
-.venv/bin/python -m eval.sensitivity                     # the table above
+.venv/bin/python -m eval.sensitivity                     # synthetic + real at +/-25% (slow)
+.venv/bin/python -m eval.generalise                      # real takes at +/-25%, by piece and player
 ```
 
 `check` compares with the accepted scoreboard in `eval/scoreboards/`, lists every metric that moved,
@@ -160,13 +162,7 @@ The decisions behind each phase, including the ones that failed, are in [eval/V3
 
 ## Next steps
 
-- Score round 2 (46 held-out monophonic takes aimed at extras, late notes and repeated notes).
-- Held too long (key not released under the next note) has a definition but no detector. On
-  different-pitch pairs the previous key still sounding 0.35 s after the next strike separated
-  2 of 3 examples from 630 normal pairs; repeated pitches cannot show it.
-- The sensitivity table below predates these changes and has not been re-run.
-- Octave doubling needs per-piano calibration (single-hand takes give each key's own overtone
-  profile) before a missing doubled note can be detected.
+See section 6 of [HANDOFF.md](HANDOFF.md).
 
 ---
 
