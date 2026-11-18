@@ -54,3 +54,39 @@ Evaluated across the full 102-take stress-test corpus (`split=all`, run `2026111
 1. **Install Python dependencies:**
    ```bash
    python -m pip install -r requirements.txt
+   ```
+
+2. **Install `ffmpeg` (required for `.m4a` / `.mp3` audio decoding):**
+   ```bash
+   conda install -c conda-forge ffmpeg -y
+   ```
+
+---
+
+## How to Run
+
+### 1. Start the FastAPI Backend Service
+```bash
+python -m uvicorn api:app --reload --port 8000
+```
+- **Interactive API Docs:** `[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)`
+- **Optional Auth:** Set `PIANO_EVAL_API_TOKEN=<secret>` to require `Authorization: Bearer <secret>` (leave unset for open local development).
+
+**Key Endpoints (`schema_version: "1.0"`):**
+- `GET /health` — Health check and active `algorithm_version`.
+- `GET /v1/scores` — Lists canonical supported `score_id`s (`ode_melody`, `ode_harmony`, `c_major_rh`, `c_major_both`, `e_major_rh`, `e_major_rh_down`, `canon_lh`, `canon_both`).
+- `POST /v1/evaluations` — Accepts `multipart/form-data` (`file` in WAV/MP3/M4A up to 25 MB, `score_id`), runs `stft_hmm_v2` alignment, deletes the temp file immediately, and returns `"status": "completed"` with the full `"result"` JSON payload.
+- `GET /v1/evaluations/{evaluation_id}` & `GET /v1/evaluations/{evaluation_id}/result` — Job status and result lookup endpoints for polling clients.
+
+**Test via `curl`:**
+```bash
+curl -s -X POST http://localhost:8000/v1/evaluations \
+  -F "file=@recordings/eval-interviews/processed/1ode-1h-1.wav" \
+  -F "score_id=ode_melody" | python -m json.tool
+```
+
+### 2. Run the Offline Evaluation Suite
+```bash
+python -m eval.cli convert
+python -m eval.cli run --model v2 --split all
+```
