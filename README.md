@@ -4,6 +4,15 @@ Goal: follow a player through a known score (monophonic lines, simple two-voice 
 per note, what went wrong, with F1 >= 0.9 on monophonic pieces, and follow the player when they
 **go back** and try again.
 
+## Try it
+
+```bash
+.venv/bin/python ui/server.py        # demo page at http://127.0.0.1:8000: upload a PDF + a recording
+.venv/bin/python grade.py --audio take.wav --piece ode_melody     # or --score sheet.pdf, --json
+```
+
+Setup for reading PDFs and details: [ui/README.md](ui/README.md).
+
 ## What is reported
 
 Two layers, answered by different evidence. A note gets one answer from the first and may get a

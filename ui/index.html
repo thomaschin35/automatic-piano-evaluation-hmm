@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Piano grader</title>
+<style>
+  :root {
+    --bg: #f6f5f1; --card: #fff; --ink: #1d1f23; --muted: #666b75; --line: #dddad2; --accent: #2b59c3;
+    --ok: #1f8a4c; --ok-bg: #e3f4e9; --bad: #c0392b; --bad-bg: #fbe6e3; --miss: #777; --miss-bg: #eee;
+    --late: #b7791f; --late-bg: #fdf1d8; --now: #2b59c3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15171b; --card: #1e2127; --ink: #e9eaec; --muted: #9aa0ab; --line: #343842; --accent: #7ea2ff;
+      --ok: #5fce8d; --ok-bg: #173524; --bad: #ff8a7a; --bad-bg: #44201c; --miss: #a0a4ad; --miss-bg: #2b2e35;
+      --late: #f0b857; --late-bg: #40321a; --now: #7ea2ff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif; }
+  main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 64px; }
+  h1 { font-size: 26px; margin: 0 0 2px; letter-spacing: -0.01em; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  p.lead { margin: 0 0 22px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+  .step { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--ink);
+          color: var(--card); font-size: 12px; font-weight: 700; margin-right: 6px; }
+  .drop { border: 1.5px dashed var(--line); border-radius: 10px; padding: 20px 14px; text-align: center; cursor: pointer;
+          color: var(--muted); transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over, .drop:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); outline: none; }
+  .drop strong { color: var(--ink); display: block; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  select, input[type=text], input[type=number], textarea {
+    font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+  textarea { width: 100%; font: 13px/1.6 ui-monospace, Menlo, monospace; resize: vertical; min-height: 64px; }
+  label.f { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin: 10px 0 3px; }
+  button.go { font: inherit; font-weight: 650; font-size: 16px; padding: 12px 28px; border-radius: 10px; border: 0;
+              background: var(--accent); color: #fff; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { button.go { color: #10131a; } }
+  button.go:disabled { opacity: .4; cursor: not-allowed; }
+  .center { text-align: center; margin: 20px 0; }
+  .status { margin-top: 10px; font-size: 14px; min-height: 21px; }
+  .status.err { color: var(--bad); }
+  .spin { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--line); border-top-color: var(--accent);
+          border-radius: 50%; animation: s .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  .warn { background: var(--late-bg); border-left: 3px solid var(--late); border-radius: 6px; padding: 8px 10px; font-size: 13px; margin-top: 8px; }
+  audio { width: 100%; margin-top: 12px; }
+  [hidden] { display: none !important; }
+
+  .headline { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .pct { font-size: 52px; font-weight: 750; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 4px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .chip b { font-weight: 700; }
+  .chip.bad b { color: var(--bad); } .chip.late b { color: var(--late); } .chip.ok b { color: var(--ok); }
+
+  .roll { display: flex; flex-wrap: wrap; gap: 10px 0; margin-top: 8px; }
+  .bar { position: relative; border-left: 2px solid var(--line); padding-top: 16px; }
+  .bar:last-child { border-right: 2px solid var(--line); }
+  .bar > .num { position: absolute; top: 0; left: 5px; font-size: 11px; color: var(--muted); }
+  .lane { position: relative; height: 40px; }
+  .lane + .lane { border-top: 1px dotted var(--line); }
+  .n { position: absolute; top: 5px; height: 30px; border-radius: 6px; border: 1.5px solid; font-size: 12px; font-weight: 650;
+       display: grid; place-items: center; cursor: pointer; white-space: nowrap; padding: 0 2px; line-height: 1.05;
+       font-variant-numeric: tabular-nums; }
+  .n small { font-weight: 500; font-size: 9px; text-decoration: line-through; opacity: .8; display: block; }
+  .n.correct { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .n.wrong_pitch { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
+  .n.missed { background: var(--miss-bg); border-color: var(--miss); border-style: dashed; color: var(--miss); }
+  .n.late { box-shadow: 0 0 0 2.5px var(--late); }
+  .n.late::after { content: "late"; position: absolute; top: -9px; right: -4px; background: var(--late); color: var(--card);
+                   font-size: 8px; font-weight: 700; padding: 0 4px; border-radius: 4px; }
+  .n.now { outline: 3px solid var(--now); outline-offset: 2px; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .legend i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid; vertical-align: -3px; margin-right: 4px; }
+
+  ul.fb { list-style: none; padding: 0; margin: 6px 0 0; }
+  ul.fb li { padding: 8px 10px; border-radius: 8px; display: flex; gap: 10px; align-items: baseline; cursor: pointer; }
+  ul.fb li:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  ul.fb .tag { flex: none; width: 96px; white-space: nowrap; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .tag.wrong { color: var(--bad); } .tag.missed { color: var(--miss); } .tag.late { color: var(--late); }
+  .tag.extra { color: var(--bad); } .tag.back { color: var(--accent); } .tag.good { color: var(--ok); }
+  ul.fb .t { margin-left: auto; flex: none; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  details { margin-top: 14px; } summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+  pre { overflow-x: auto; font: 12px/1.5 ui-monospace, Menlo, monospace; background: var(--bg); padding: 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Piano grader</h1>
+  <p class="lead">Upload the sheet music and a recording of you playing it. The page reads the notes, follows your playing, and marks each note.</p>
+
+  <div class="grid">
+    <section class="card">
+      <h2><span class="step">1</span>Sheet music</h2>
+      <div class="drop" id="scoreDrop" tabindex="0" role="button">
+        <strong>Drop a PDF here, or click to choose</strong>
+        PDF, PNG / JPG, or MusicXML
+      </div>
+      <input type="file" id="scoreFile" accept=".pdf,.png,.jpg,.jpeg,.musicxml,.xml,.mxl" hidden>
+      <div class="row">
+        <span class="muted">or use a built-in piece</span>
+        <select id="pieceSel" style="flex:1 1 180px; min-width:0; max-width:100%"><option value="">choose…</option></select>
+      </div>
+      <div class="status" id="scoreStatus"></div>
+      <div id="scoreWarn"></div>
+      <div id="scoreEdit" hidden>
+        <div class="row">
+          <div style="flex:1; min-width:160px"><label class="f" for="title">Title</label><input type="text" id="title" style="width:100%"></div>
+          <div><label class="f" for="tsNum">Time signature</label>
+            <input type="number" id="tsNum" min="1" max="24" style="width:56px"> /
+            <input type="number" id="tsDen" min="1" max="32" style="width:56px"></div>
+        </div>
+        <label class="f" for="rh">Right hand</label><textarea id="rh" spellcheck="false"></textarea>
+        <label class="f" for="lh">Left hand</label><textarea id="lh" spellcheck="false"></textarea>
+        <div class="muted">Each note is <code>pitch:beats</code> (a beat is a quarter note), e.g. <code>E4:1 F#4:0.5 rest:2</code>.
+          Fix anything that was misread; the <code>|</code> bar marks are only for reading.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2><span class="step">2</span>Recording</h2>
+      <div class="drop" id="audioDrop" tabindex="0" role="button">
+        <strong>Drop the recording here, or click to choose</strong>
+        WAV, MP3, M4A, FLAC or OGG
+      </div>
+      <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.m4a,.flac,.ogg" hidden>
+      <div class="status" id="audioStatus"></div>
+      <audio id="player" controls hidden></audio>
+    </section>
+  </div>
+
+  <div class="center">
+    <button class="go" id="gradeBtn" disabled>Grade my playing</button>
+    <div class="status" id="gradeStatus"></div>
+  </div>
+
+  <section class="card" id="results" hidden>
+    <div class="headline"><div class="pct" id="pct"></div><div><b id="pctLine"></b><div class="muted" id="pctSub"></div></div></div>
+    <div class="chips" id="chips"></div>
+    <h2 style="margin-top:20px">Note by note</h2>
+    <div class="muted">Click a note to hear it. The outlined note follows the playback.<span id="lanes" hidden> Top row: right hand. Bottom row: left hand.</span></div>
+    <div class="roll" id="roll"></div>
+    <div class="legend">
+      <span><i style="background:var(--ok-bg);border-color:var(--ok)"></i>correct</span>
+      <span><i style="background:var(--bad-bg);border-color:var(--bad)"></i>wrong note (the key you played is shown)</span>
+      <span><i style="background:var(--miss-bg);border-color:var(--miss);border-style:dashed"></i>missed</span>
+      <span><i style="box-shadow:0 0 0 2.5px var(--late);border-color:transparent"></i>started late</span>
+    </div>
+    <h2 style="margin-top:22px">What to work on</h2>
+    <ul class="fb" id="feedback"></ul>
+    <details><summary>Raw algorithm report</summary><pre id="raw"></pre></details>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = { score: null, audioId: null, busy: false };
+const UNIT = 56;                                   // pixels per beat in the note-by-note view
+const fmt = x => String(Math.round(x * 1000) / 1000);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function api(path, opts) {
+  let r;
+  try { r = await fetch(path, opts); } catch { throw new Error("The server is not reachable. Is ui/server.py still running?"); }
+  const data = await r.json().catch(() => ({ error: "The server sent an unreadable reply" }));
+  if (!r.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+function setStatus(el, text, kind) {
+  el.className = "status" + (kind === "err" ? " err" : "");
+  el.innerHTML = (kind === "busy" ? '<span class="spin"></span>' : "") + esc(text);
+}
+function refreshButton() { $("gradeBtn").disabled = !(state.score && state.audioId) || state.busy; }
+
+// ---------------------------------------------------------------- score text <-> events
+function handToText(events, score) {
+  const bpm = score.time_signature[0] * 4 / score.time_signature[1];
+  let beat = -(score.pickup_beats || 0), out = [];
+  for (const [p, d] of events) {
+    if (out.length && Math.abs(beat / bpm - Math.round(beat / bpm)) < 1e-6) out.push("|");
+    out.push(`${p}:${fmt(d)}`);
+    beat += d;
+  }
+  return out.join(" ");
+}
+function textToHand(text, hand) {
+  const events = [];
+  for (const tok of text.split(/\s+/)) {
+    if (!tok || /^\|+$/.test(tok)) continue;
+    const m = /^([A-Ga-g][#b]?-?\d|r|rest)(?::(\d*\.?\d+))?$/i.exec(tok);
+    if (!m) throw new Error(`${hand}: cannot read "${tok}" (write notes like E4:1 or rest:2)`);
+    const name = /^r/i.test(m[1]) ? "rest" : m[1][0].toUpperCase() + m[1].slice(1);
+    events.push([name, m[2] ? parseFloat(m[2]) : 1]);
+  }
+  return events;
+}
+function showScore(score, warnings, note) {
+  state.score = score;
+  $("title").value = score.title || "";
+  $("tsNum").value = score.time_signature[0];
+  $("tsDen").value = score.time_signature[1];
+  $("rh").value = handToText(score.hands.RH || [], score);
+  $("lh").value = handToText(score.hands.LH || [], score);
+  $("scoreEdit").hidden = false;
+  $("scoreWarn").innerHTML = (warnings || []).map(w => `<div class="warn">${esc(w)}</div>`).join("");
+  const count = h => (score.hands[h] || []).filter(e => e[0] !== "rest").length;
+  setStatus($("scoreStatus"), `${note}: ${count("RH")} right-hand and ${count("LH")} left-hand notes.`);
+  refreshButton();
+}
+function currentScore() {
+  const hands = {};
+  const rh = textToHand($("rh").value, "Right hand"), lh = textToHand($("lh").value, "Left hand");
+  if (rh.length) hands.RH = rh;
+  if (lh.length) hands.LH = lh;
+  return { ...state.score, title: $("title").value.trim() || "Uploaded score",
+           time_signature: [parseInt($("tsNum").value) || 4, parseInt($("tsDen").value) || 4], hands };
+}
+
+// ---------------------------------------------------------------- uploads
+async function loadScoreFile(file) {
+  if (state.busy) return;
+  const slow = /\.(pdf|png|jpe?g)$/i.test(file.name);
+  const t0 = Date.now();
+  const tick = () => setStatus($("scoreStatus"), slow
+    ? `Reading the notes from ${file.name}… ${Math.round((Date.now() - t0) / 1000)} s (about 1-2 minutes per page)`
+    : `Reading ${file.name}…`, "busy");
+  tick();
+  const timer = setInterval(tick, 1000);
+  state.busy = true; refreshButton();
+  $("scoreWarn").innerHTML = ""; $("pieceSel").value = "";
+  try {
+    const r = await api(`/api/score?filename=${encodeURIComponent(file.name)}`, { method: "POST", body: file });
+    showScore(r.score, r.warnings, `Read ${file.name} in ${r.seconds} s`);
+  } catch (e) {
+    setStatus($("scoreStatus"), e.message, "err");
+  } finally {
+    clearInterval(timer); state.busy = false; refreshButton();
+  }
+}
+async function loadAudioFile(file) {
+  setStatus($("audioStatus"), `Uploading ${file.name}…`, "busy");
+  try {
+    const r = await api(`/api/audio?filename=${encodeURIComponent(file.name)}`, { method: "POST", body: file });
+    state.audioId = r.audio_id;
+    const p = $("player");
+    if (p.src) URL.revokeObjectURL(p.src);
+    p.src = URL.createObjectURL(file); p.hidden = false;
+    setStatus($("audioStatus"), `${file.name} is ready.`);
+  } catch (e) {
+    state.audioId = null;
+    setStatus($("audioStatus"), e.message, "err");
+  }
+  refreshButton();
+}
+function wireDrop(drop, input, onFile) {
+  drop.addEventListener("click", () => input.click());
+  drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); } });
+  input.addEventListener("change", () => { if (input.files[0]) onFile(input.files[0]); input.value = ""; });
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); if (e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+}
+wireDrop($("scoreDrop"), $("scoreFile"), loadScoreFile);
+wireDrop($("audioDrop"), $("audioFile"), loadAudioFile);
+
+api("/api/pieces").then(list => {
+  for (const p of list) $("pieceSel").add(new Option(p.title + (p.two_hands ? " (two hands)" : ""), p.name));
+}).catch(e => setStatus($("scoreStatus"), e.message, "err"));
+$("pieceSel").addEventListener("change", async e => {
+  if (!e.target.value) return;
+  try {
+    const r = await api(`/api/piece?name=${encodeURIComponent(e.target.value)}`);
+    showScore(r.score, r.warnings, "Built-in piece loaded");
+  } catch (err) { setStatus($("scoreStatus"), err.message, "err"); }
+});
+
+// ---------------------------------------------------------------- grading
+$("gradeBtn").addEventListener("click", async () => {
+  let score;
+  try { score = currentScore(); } catch (e) { return setStatus($("gradeStatus"), e.message, "err"); }
+  state.busy = true; refreshButton();
+  setStatus($("gradeStatus"), "Listening to the recording…", "busy");
+  try {
+    const r = await api("/api/grade", { method: "POST", headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({ audio_id: state.audioId, score }) });
+    setStatus($("gradeStatus"), `Graded in ${r.seconds} s.`);
+    render(r);
+  } catch (e) {
+    setStatus($("gradeStatus"), e.message, "err");
+  } finally { state.busy = false; refreshButton(); }
+});
+
+const HAND = { RH: "right hand", LH: "left hand" };
+function seek(t) {
+  if (t == null) return;
+  const p = $("player");
+  p.currentTime = Math.max(0, t - 0.15);
+  p.play().catch(() => {});
+}
+function where(n, two) { return `Bar ${n.measure}, beat ${fmt(n.beat)}${two ? ` (${HAND[n.hand]})` : ""}`; }
+
+function render(r) {
+  const s = r.summary, two = r.piece.two_hands;
+  $("pct").textContent = Math.round(s.score_pct) + "%";
+  $("pctLine").textContent = `${s.clean} of ${s.notes} notes right and on time`;
+  $("pctSub").textContent = `${r.piece.title}` + (s.tempo_bpm ? ` · played at about ${Math.round(s.tempo_bpm)} beats per minute` : "");
+  const chip = (label, n, cls) => `<span class="chip ${n ? cls : ""}"><b>${n}</b> ${label}</span>`;
+  $("chips").innerHTML = `<span class="chip ok"><b>${s.correct}</b> correct</span>` + chip("wrong note", s.wrong_pitch, "bad")
+    + chip("missed", s.missed, "bad") + chip("late", s.late, "late") + chip("extra", s.extra, "bad") + chip("went back", s.restarts, "late");
+
+  // note-by-note view: one box per bar, one lane per hand
+  const bpm = r.piece.beats_per_measure, hands = two ? ["RH", "LH"] : [r.notes[0]?.hand || "RH"];
+  const bars = new Map();
+  for (const n of r.notes) { if (!bars.has(n.measure)) bars.set(n.measure, []); bars.get(n.measure).push(n); }
+  const first = Math.min(...bars.keys()), last = Math.max(...bars.keys());
+  let html = "";
+  for (let m = first; m <= last; m++) {
+    html += `<div class="bar" style="width:${bpm * UNIT + 2}px"><span class="num">${m}</span>`;
+    for (const h of hands) {
+      html += `<div class="lane">`;
+      for (const n of (bars.get(m) || []).filter(n => n.hand === h)) {
+        const tip = n.label === "wrong_pitch" ? `played ${n.played} instead of ${n.pitch}${n.corrected ? ", then corrected" : ""}`
+          : n.label === "missed" ? `${n.pitch} was not played` : `${n.pitch} correct`;
+        const body = n.label === "wrong_pitch" ? `<span><small>${n.pitch}</small>${n.played}</span>` : n.pitch;
+        html += `<div class="n ${n.label}${n.late ? " late" : ""}" data-id="${n.id}" data-t="${n.time_s ?? ""}"
+          style="left:${(n.beat - 1) * UNIT + 3}px; min-width:${Math.max(n.beats * UNIT - 6, 22)}px"
+          title="${esc(where(n, two) + ": " + tip + (n.late ? `, ${fmt(n.late_beats)} beats late` : "") + (n.times_played > 1 ? `, played ${n.times_played} times` : ""))}">${body}</div>`;
+      }
+      html += "</div>";
+    }
+    html += "</div>";
+  }
+  $("roll").innerHTML = html;
+  $("lanes").hidden = !two;
+  $("roll").querySelectorAll(".n").forEach(el => el.addEventListener("click", () => seek(el.dataset.t === "" ? null : +el.dataset.t)));
+
+  // plain-language feedback, in score order
+  const items = [];
+  for (const n of r.notes) {
+    if (n.label === "wrong_pitch") items.push(["wrong", "Wrong note", `${where(n, two)}: you played ${n.played} instead of ${n.pitch}${n.corrected ? ", then corrected it" : ""}.`, n.time_s]);
+    if (n.label === "missed") items.push(["missed", "Missed", `${where(n, two)}: ${n.pitch} was not played.`, null]);
+    if (n.late) items.push(["late", "Late", `${where(n, two)}: ${n.pitch} started ${fmt(n.late_beats)} beats late`
+      + ({ held: " (the previous key was held down)", paused: " (after a pause)" }[n.late_reason] || "") + ".", n.time_s]);
+  }
+  const at = p => `bar ${p.measure}, beat ${fmt(p.beat)}`;
+  for (const x of r.extras) items.push(["extra", "Extra note", `${x.pitch} is not in the score (played ${x.after ? `after the ${x.after.pitch} at ${at(x.after)}` : "before the first note"}).`, x.time_s]);
+  for (const b of r.restarts) {
+    const why = b.mistakes.map(m => m.label === "wrong_pitch" ? `you played ${m.played} instead of ${m.pitch} at ${at(m)}` : `${m.pitch} at ${at(m)} was missed`).join("; ");
+    items.push(["back", "Went back", `From ${at(b.from)} back to ${at(b.to)} and played on` + (why ? `. Before going back: ${why}.` : " (no mistake heard before going back)."), b.time_s]);
+  }
+  if (!items.length) items.push(["good", "Clean", "No mistakes found. Every note was right and on time.", null]);
+  $("feedback").innerHTML = items.map(([cls, tag, text, t], i) =>
+    `<li data-i="${i}"><span class="tag ${cls}">${tag}</span><span>${esc(text)}</span>${t != null ? `<span class="t">${t.toFixed(1)} s</span>` : ""}</li>`).join("");
+  $("feedback").querySelectorAll("li").forEach(li => li.addEventListener("click", () => seek(items[+li.dataset.i][3])));
+
+  $("raw").textContent = r.report_text;
+  state.times = r.notes.filter(n => n.time_s != null).map(n => [n.time_s, n.id]).sort((a, b) => a[0] - b[0]);
+  $("results").hidden = false;
+  $("results").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// outline the note being played
+$("player").addEventListener("timeupdate", () => {
+  if (!state.times) return;
+  const t = $("player").currentTime + 0.05;
+  let id = null;
+  for (const [ts, nid] of state.times) { if (ts <= t) id = nid; else break; }
+  document.querySelectorAll(".n.now").forEach(el => el.classList.remove("now"));
+  if (id) document.querySelector(`.n[data-id="${id}"]`)?.classList.add("now");
+});
+</script>
+</body>
+</html>

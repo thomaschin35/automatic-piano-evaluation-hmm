@@ -16,3 +16,7 @@ eval/runs/
 
 # feature cache and accepted-scoreboard scratch
 eval/cache/
+
+# sheet-music reader env (homr), see ui/README.md
+.venv-omr/
+
