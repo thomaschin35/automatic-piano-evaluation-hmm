@@ -34,14 +34,18 @@ Evaluated across the full 102-take stress-test corpus (`split=all`, run `2026111
 | **Overall Error $F_1$ (`err F1`)** | **0.64** |
 | **Monophonic `wrong_pitch` $F_1$** | **0.59** (0.53 overall) |
 | **Monophonic `missed` $F_1$** | **0.45** (0.38 overall) |
-| **Played-Pitch Accuracy on Detected Wrong Notes** | **82.4%** |
-| **Clean-Take Pass Rate** | **69.6%** (15/31 zero-flag takes) |
+| **Played-Pitch Accuracy on Detected Wrong Notes** | **82.4%** (n=17) |
+| **Clean Takes (`clean`)** | **15 / 31** (48.4%) |
+| **Overall Pass Rate (`pass%`)** | **69.6%** |
 
-**Per-Piece Error $F_1$ Highlights:**
-- `canon_lh` (4 takes, 256 notes): **0.80** Error $F_1$ (0.88 P / 0.74 R)
-- `c_major_rh` (19 takes, 152 notes): **0.75** Error $F_1$ (0.60 P / 1.00 R; 0.80 `wrong_pitch` $F_1$)
-- `ode_melody` (54 takes, 810 notes): **0.68** Error $F_1$ (0.74 P / 0.62 R)
-- `e_major_rh` (2 takes, 16 notes): **100.0%** clean-take pass rate (2/2)
+**Per-Piece Breakdown (`v2 @ 6625b8a`):**
+- `canon_lh` (4 takes, 256 notes): **0.88** err P / **0.74** err R / **0.80** err $F_1$ (**100.0%** pass%)
+- `c_major_rh` (19 takes, 152 notes): **0.60** err P / **1.00** err R / **0.75** err $F_1$ (**0.80** `wrong_pitch` $F_1$, **63.2%** pass%)
+- `ode_melody` (54 takes, 810 notes): **0.74** err P / **0.62** err R / **0.68** err $F_1$ (**70.4%** pass%)
+- `e_major_rh_down` (17 takes, 136 notes): **0.32** err P / **1.00** err R / **0.48** err $F_1$ (**0.86** `wrong_pitch` $F_1$, **70.6%** pass%)
+- `e_major_rh` (2 takes, 16 notes): **2/2** clean takes (**100.0%** pass%)
+- `ode_harmony` (4 takes, 76 notes): **0.25** err P / **1.00** err R / **0.40** err $F_1$ (**50.0%** pass%)
+- `c_major_both` (2 takes, 32 notes): **0.12** err P / **1.00** err R / **0.22** err $F_1$ (**50.0%** pass%)
 
 ---
 
