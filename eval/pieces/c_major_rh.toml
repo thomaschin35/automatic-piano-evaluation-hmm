@@ -1,0 +1,7 @@
+name = "c_major_rh"
+title = "C major scale, one octave ascending, right hand"
+time_signature = [4, 4]
+bpm = 120
+
+[hands]
+RH = [["C4", 1], ["D4", 1], ["E4", 1], ["F4", 1], ["G4", 1], ["A4", 1], ["B4", 1], ["C5", 1]]

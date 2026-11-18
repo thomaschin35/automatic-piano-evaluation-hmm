@@ -1,0 +1,10 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "canon_both"
+perfect = false
+
+[[error]]
+note = "LH53"
+type = "wrong_pitch"
+played = "C#2"
+comment = "Played two wrong notes to correct back (C# then D#, but then with the right hand same time for both)"

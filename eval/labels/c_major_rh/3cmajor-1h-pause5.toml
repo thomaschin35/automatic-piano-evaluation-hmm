@@ -1,0 +1,9 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "c_major_rh"
+perfect = false
+# note RH5: silent pause before
+
+[[error]]
+note = "RH5"
+type = "late"

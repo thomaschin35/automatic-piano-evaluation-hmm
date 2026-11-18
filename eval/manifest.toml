@@ -1,0 +1,709 @@
+# Every evaluated recording. Audio paths are relative to the repo root.
+# Labels live at eval/labels/<piece>/<id>.toml. split = "dev" | "test"
+# (test is only scored with `python -m eval.cli run --split test`).
+# Add new takes with: python -m eval.cli new-take <audio> --piece <piece> [--split test]
+
+[[take]]
+id = "c_major_asc"
+piece = "c_major_rh"
+audio = "recordings/aloud/c_major_asc.wav"
+split = "dev"
+
+[[take]]
+id = "c_scale_1h_1wrong"
+piece = "c_major_rh"
+audio = "recordings/wrong_notes/processed/c_scale_1h_1wrong.wav"
+split = "dev"
+
+
+
+[[take]]
+id = "odeharm"
+piece = "ode_harmony"
+audio = "recordings/aloud/odeharm.wav"
+split = "dev"
+
+[[take]]
+id = "ode_harm_1wrongM"
+piece = "ode_harmony"
+audio = "recordings/wrong_notes/processed/ode_harm_1wrongM.wav"
+split = "dev"
+
+[[take]]
+id = "ode_harm_1wrongH"
+piece = "ode_harmony"
+audio = "recordings/wrong_notes/processed/ode_harm_1wrongH.wav"
+split = "dev"
+
+[[take]]
+id = "1can-1h-1"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/processed/1can-1h-1.wav"
+split = "dev"
+
+[[take]]
+id = "1can-2h-1"
+piece = "canon_both"
+audio = "recordings/eval-interviews/processed/1can-2h-1.wav"
+split = "dev"
+exclude = "backtracks to the start of measure 5 mid-take"
+
+[[take]]
+id = "1can-1h-2"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/processed/1can-1h-2.wav"
+split = "dev"
+
+[[take]]
+id = "1can-2h-2"
+piece = "canon_both"
+audio = "recordings/eval-interviews/processed/1can-2h-2.wav"
+split = "dev"
+
+[[take]]
+id = "1cmajor-2h-up"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/processed/1cmajor-2h-up.wav"
+split = "dev"
+
+[[take]]
+id = "2can-1h-1"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/processed/2can-1h-1.wav"
+split = "dev"
+
+[[take]]
+id = "2can-2h-1"
+piece = "canon_both"
+audio = "recordings/eval-interviews/processed/2can-2h-1.wav"
+split = "dev"
+
+[[take]]
+id = "2can-1h-2"
+piece = "canon_lh"
+audio = "recordings/eval-interviews/processed/2can-1h-2.wav"
+split = "dev"
+
+[[take]]
+id = "2can-2h-2"
+piece = "canon_both"
+audio = "recordings/eval-interviews/processed/2can-2h-2.wav"
+split = "dev"
+
+[[take]]
+id = "2cmajor-2h-up"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/processed/2cmajor-2h-up.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/1ode-1h-1.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-2"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/1ode-1h-2.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/1ode-1h-3.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-inc"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/1ode-1h-inc.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-1h-miss"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/1ode-1h-miss.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-1.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-2"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-2.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-3.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-inc"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-inc.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-miss"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-miss.wav"
+split = "dev"
+
+[[take]]
+id = "2ode-1h-wrong"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/2ode-1h-wrong.wav"
+split = "dev"
+
+[[take]]
+id = "1cmajor-up"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/1cmajor-up.wav"
+split = "dev"
+
+[[take]]
+id = "2cmajor-1h-up"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/2cmajor-1h-up.wav"
+split = "dev"
+
+[[take]]
+id = "1emajor-1h-up"
+piece = "e_major_rh"
+audio = "recordings/eval-interviews/processed/1emajor-1h-up.wav"
+split = "dev"
+
+[[take]]
+id = "2emajor-1h-up"
+piece = "e_major_rh"
+audio = "recordings/eval-interviews/processed/2emajor-1h-up.wav"
+split = "dev"
+
+[[take]]
+id = "1emajor-1h-down"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/1emajor-1h-down.wav"
+split = "dev"
+
+[[take]]
+id = "1emajor-2h-up"
+piece = "e_major_both"
+audio = "recordings/eval-interviews/processed/1emajor-2h-up.wav"
+split = "dev"
+
+[[take]]
+id = "2emajor-2h-up"
+piece = "e_major_both"
+audio = "recordings/eval-interviews/processed/2emajor-2h-up.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-2h-1"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/1ode-2h-1.wav"
+split = "dev"
+
+[[take]]
+id = "1ode-2h-2"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/1ode-2h-2.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-clean"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-clean.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-extra3"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-extra3.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-miss4"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-miss4.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-overlap6"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-overlap6.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-pause5"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-pause5.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-restart"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-restart.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-1h-stretch4"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/3cmajor-1h-stretch4.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-2h-clean"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/processed/3cmajor-2h-clean.wav"
+split = "dev"
+
+[[take]]
+id = "3cmajor-2h-wrong5"
+piece = "c_major_both"
+audio = "recordings/eval-interviews/processed/3cmajor-2h-wrong5.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-clean"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-clean.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-extra2"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-extra2.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-overlap4"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-overlap4.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-pause5"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-pause5.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-restart"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-restart.wav"
+split = "dev"
+
+[[take]]
+id = "3emajor-1h-down-wrong3"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/3emajor-1h-down-wrong3.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-clean1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-clean1.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-clean2"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-clean2.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-extra12"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-extra12.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-extra4"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-extra4.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-fix6"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-fix6.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-miss10"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-miss10.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-miss8"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-miss8.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-overlap7"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-overlap7.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-pause4"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-pause4.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-pause9"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-pause9.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-restart1"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-restart1.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-restart5"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-restart5.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-restart6"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-restart6.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-shift"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-shift.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-stop"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-stop.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-stretch12"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-stretch12.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-1h-wrong3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/3ode-1h-wrong3.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-2h-clean"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/3ode-2h-clean.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-2h-extralh"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/3ode-2h-extralh.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-2h-missrh9"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/3ode-2h-missrh9.wav"
+split = "dev"
+
+[[take]]
+id = "3ode-2h-pause9"
+piece = "ode_harmony"
+audio = "recordings/eval-interviews/processed/3ode-2h-pause9.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-clean-soft"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-clean-soft.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-combo-extra2-wrong7"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-combo-extra2-wrong7.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-extra-fsharp"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-extra-fsharp.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-extra-g5-quick"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-extra-g5-quick.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-late-keep4"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-late-keep4.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-late-lift7"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-late-lift7.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-miss-e3f4"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-miss-e3f4.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-restart-back2"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-restart-back2.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-wrong-b6"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-wrong-b6.wav"
+split = "dev"
+
+[[take]]
+id = "4cmajor-1h-wrong-octave1"
+piece = "c_major_rh"
+audio = "recordings/eval-interviews/processed/4cmajor-1h-wrong-octave1.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-clean-soft"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-clean-soft.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-combo-wrong3-miss7"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-combo-wrong3-miss7.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-extra-b4-soft"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-extra-b4-soft.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-late-half7"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-late-half7.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-late-keep6"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-late-keep6.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-late-lift3"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-late-lift3.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-miss-gsharp6"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-miss-gsharp6.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-restart-pause"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-restart-pause.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-wrong-d2"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-wrong-d2.wav"
+split = "dev"
+
+[[take]]
+id = "4emajor-1h-down-wrong-g6"
+piece = "e_major_rh_down"
+audio = "recordings/eval-interviews/processed/4emajor-1h-down-wrong-g6.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-clean-fast"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-clean-fast.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-clean-loud"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-clean-loud.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-clean-normal"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-clean-normal.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-clean-verysoft"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-clean-verysoft.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-combo-miss3-late9"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-combo-miss3-late9.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-brush-a"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-brush-a.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-c10-soft"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-c10-soft.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-d15-quick"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-d15-quick.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-e2-triple"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-e2-triple.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-f6"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-f6.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-extra-start"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-extra-start.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-late-half11"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-late-half11.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-late-keep7"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-late-keep7.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-late-lift14"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-late-lift14.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-late-two3-10"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-late-two3-10.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-c10-keep"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-c10-keep.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-e13-drop"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-e13-drop.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-e2-keep"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-e2-keep.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-f6"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-f6.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-first"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-first.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-miss-g5-drop"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-miss-g5-drop.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-restart-wrong7"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-restart-wrong7.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-wrong-anticip3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-wrong-anticip3.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-wrong-dsharp11-soft"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-wrong-dsharp11-soft.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-wrong-fix12"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-wrong-fix12.wav"
+split = "dev"
+
+[[take]]
+id = "4ode-1h-wrong-repeat3"
+piece = "ode_melody"
+audio = "recordings/eval-interviews/processed/4ode-1h-wrong-repeat3.wav"
+split = "dev"

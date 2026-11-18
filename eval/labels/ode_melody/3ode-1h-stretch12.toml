@@ -1,0 +1,10 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "ode_melody"
+perfect = false
+# note RH12: held this note two beats
+# note RH13: came late: RH12 was held two beats
+
+[[error]]
+note = "RH13"
+type = "late"

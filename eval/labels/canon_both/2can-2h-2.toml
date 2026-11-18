@@ -1,0 +1,68 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "canon_both"
+perfect = false
+
+[[error]]
+note = "LH21"
+type = "wrong_pitch"
+played = "A2"
+
+[[error]]
+note = "LH21"
+type = "held_long"
+
+[[error]]
+note = "LH22"
+type = "wrong_pitch"
+played = "E3"
+
+[[error]]
+note = "LH23"
+type = "wrong_pitch"
+played = "A3"
+
+[[error]]
+note = "LH24"
+type = "wrong_pitch"
+played = "C#4"
+
+[[error]]
+note = "LH25"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH26"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH27"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH28"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH29"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH30"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH31"
+type = "missed"
+comment = "SKIP"
+
+[[error]]
+note = "LH32"
+type = "missed"
+comment = "SKIP"
