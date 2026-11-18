@@ -1,96 +1,68 @@
-# Dynamic Tempo Calibration & Onset Normalization (`stft_hmm_v2`)
+# Automatic Piano Evaluation (`stft_hmm_v2` & FastAPI Service)
 
-This branch introduces pitch-gated Inter-Onset Interval (IOI) dynamic tempo tracking, local onset normalization, peak sharpening, and emission tuning to the `stft_hmm_v2` pipeline. These optimizations decouple human expressive timing variations (rubato, hesitations, and practice speed drift) from pitch evaluation errors, substantially reducing false alarms.
+An audio-to-score alignment and diagnostic grading pipeline powered by a timing-first Short-Time Fourier Transform Hidden Markov Model (`stft_hmm_v2`), paired with a versioned FastAPI HTTP service (`api.py`) for integration with the Piano Project frontend.
 
 ---
 
-## Key Algorithmic Changes
+## Architecture & Module Overview
 
-### 1. `TimingConfig` Updates
-* **Transient Window Width:** Increased `attack_frames` from `1` to `3` (~70 ms) to absorb STFT window temporal smearing.
-* **Duration Constraints & Loss Weights:** Lowered `min_dur_fraction` from `0.45` to `0.40` and `pitch_floor` from `0.60` to `0.50`. Rebalanced state emission weights to `onset_weight = 2.5` and `pitch_weight = 1.5`.
-* **Asymmetric Onset Penalties:** Introduced `sustain_onset_floor = 0.12` alongside `onset_floor = 0.02` to prevent smeared transient energy from trapping Viterbi decoding in sustain states.
-* **IOI Sliding Parameters:** Added `local_window_sec = 4.0`, `ioi_notes = 6`, `onset_peak_height = 0.22`, and `onset_min_ioi_sec = 0.08`.
+- **`stft_features.py`**: Audio preprocessing (silence trimming, STFT extraction), harmonic pitch candidate scoring, and onset detection.
+- **`score_models.py`**: Canonical symbolic score definitions (`ode_to_joy`, `c_major_scale`, `fur_elise`, etc.) and beat-level segment slicing.
+- **`stft_hmm_v2.py`**: Pitch-gated Inter-Onset Interval (IOI) dynamic tempo tracking, local percentile onset normalization, peak sharpening, Viterbi state alignment, and post-alignment note grading.
+- **`eval/`**: Evaluation harness (`eval.cli`), piece specifications (`eval/pieces/*.toml`), ground-truth labels (`eval/labels/`), and adapter mappings (`eval/adapters.py`).
+- **`api.py`**: FastAPI service exposing `/health`, `/v1/scores`, and `/v1/evaluations` conforming to the `schema_version: "1.0"` integration contract.
+
+---
+
+## Key Algorithmic Changes (`stft_hmm_v2`)
+
+### 1. `TimingConfig` & Grading Calibration
+- **Transient Window Width:** `attack_frames = 3` (~70 ms) to absorb STFT window temporal smearing.
+- **Asymmetric Onset & Pitch Penalties:** `onset_floor = 0.02`, `sustain_onset_floor = 0.12`, and `pitch_floor = 0.50` with `onset_weight = 2.5` and `pitch_weight = 1.5`, keeping wrong-pitch notes aligned to their expected score slot without dragging Viterbi off track.
+- **Skip & Repeat Gates:** Tuned `skip_prob = 0.015`, `insert_prob = 0.02`, `repeat_onset_min = 0.35`, and `repeat_missing_penalty = 8.0`.
+- **Post-Alignment Grading Thresholds:** Calibrated `present_threshold = 0.32`, `wrong_min_score = 0.35`, `sub_onset_threshold = 0.42`, and `held_ratio = 2.1` to reduce false `missed` and `held_long` alarms on soft dynamics and phrase endings.
 
 ### 2. Feature Preprocessing & Peak Sharpening
-* **Local Adaptive Normalization:** Added `_rolling_percentile()` and `local_normalize()`, replacing static global 95th-percentile scaling with a rolling 4-second local median and 90th-percentile baseline.
-* **Non-Maximum Suppression (NMS):** Implemented `_nms_peaks()` and `sharpen_onsets()` with a 1-frame halo to collapse multi-frame STFT smears into distinct attack spikes.
-* **Score-Independent Onset Representation:** Updated `onset_any()` to pass locally normalized candidate pitch onsets and frame energy gradients through peak sharpening.
+- **Local Adaptive Normalization:** `_rolling_percentile()` and `local_normalize()` scale onset and energy envelopes against a rolling 4-second local median and 90th percentile so soft and loud passages share a consistent baseline.
+- **Non-Maximum Suppression (NMS):** `_nms_peaks()` and `sharpen_onsets()` collapse multi-frame STFT smears into single attack spikes with a 1-frame halo (`onset_halo = 0.35`).
 
 ### 3. Pitch-Gated Dynamic IOI Tempo Tracking
-* **Pitch Gating:** Added `_pitch_gated_onset()` to restrict onset evaluation to expected score pitches, preventing pedal thumps and out-of-score broadband noise from altering tempo calculations.
-* **Dynamic Tempo Curve:** Implemented `recording_tempo()` using a sliding-window median IOI over pitch-gated peaks, producing an interpolated frames-per-beat (FPB) curve across the recording.
-* **Recording-Adaptive Segmentation:** Replaced `create_initial_alignment()` with `create_recording_alignment()`, allocating note frame durations directly from the local tempo curve rather than uniform global score stretching.
-
-### 4. Emission Refinements
-* In `log_emissions()`, sustain states now evaluate non-onset evidence against `sustain_onset_floor` (`0.12`) rather than `eps` (`0.02`), preventing prolonged attacks from delaying note-state advancement.
+- **Pitch Gating:** `_pitch_gated_onset()` restricts tempo peak detection to expected score pitches so pedal thumps and broadband noise do not skew tempo estimation.
+- **Dynamic Tempo Curve:** `recording_tempo()` computes a sliding-window median IOI across pitch-gated peaks (`ioi_notes = 6`) to interpolate a local frames-per-beat (FPB) curve, passed into `create_recording_alignment()`.
 
 ---
 
-## Benchmark Results (27 Takes, 741 Notes)
+## Benchmark Results
 
-| Metric | Baseline (`v2` Initial) | Calibrated (`stft-hmm-tempo-calibration`) | Delta |
+### Expanded Stress-Test Corpus (102 Takes, 1,478 Notes)
+Evaluated across all 102 labeled takes including soft/loud dynamics, restarts, pauses, extra notes, and articulation edge cases:
+
+| Metric | Initial 102-Take Baseline | Tuned `stft_hmm_v2` (`shreema-hmm`) | Delta |
 | :--- | :---: | :---: | :---: |
-| **Error Precision** | **0.48** (48.0%) | **0.75** (75.0%) | **+27.0%** |
-| **Error Recall** | **0.80** (80.0%) | **0.78** (78.0%) | -2.0% |
-| **Overall Error $F_1$** | **0.60** | **0.76** | **+0.16** |
-| **False Substitutions (`correct` $\rightarrow$ `wrong_pitch`)** | 25 | **2** | **-92.0%** |
-| **Played-Pitch Accuracy on Detected Errors** | 84.6% | **82.1%** | -2.5% |
+| **Error Precision** | 0.40 (40.0%) | **0.57** (57.0%) | **+17.0%** |
+| **Error Recall** | **0.78** (78.0%) | 0.74 (74.0%) | -4.0% |
+| **Overall Error $F_1$** | 0.53 | **0.64** | **+0.11** |
+| **Monophonic `wrong_pitch` $F_1$** | 0.50 | **0.59** | **+0.09** |
+| **Overall `missed` $F_1$** | 0.28 | **0.38** | **+0.10** |
+| **Played-Pitch Accuracy on Detected Wrong Notes** | 81.2% | **82.4%** | **+1.2%** |
+| **Clean-Take Pass Rate** | 9 / 31 (29.0%) | **15 / 31 (48.4%)** | **+19.4%** |
 
-### Key Improvements by Piece
-* `ode_melody`: Precision surged from **0.26** to **1.00**; clean-take pass rate reached **90.9%** (6/6 clean takes passed).
-* `c_major_rh` & `e_major_rh`: Eliminated false-alarm substitutions, achieving **100% pass rates** (2/2 clean takes each).
-* `canon_both`: Error $F_1$ increased from **0.69** to **0.72** with **100%** evaluation completion.
+#### Breakdown by Piece (102 Takes)
+- **`canon_lh`** (4 takes, 256 notes): **0.88** Precision / **0.79** Recall / **0.83** Error $F_1$
+- **`c_major_rh`** (19 takes, 152 notes): **0.60** Precision / **1.00** Recall / **0.75** Error $F_1$ (**0.80** `wrong_pitch` $F_1$)
+- **`ode_melody`** (54 takes, 810 notes): **0.74** Precision / **0.62** Recall / **0.68** Error $F_1$
+- **`e_major_rh`** (2 takes, 16 notes): **100.0%** clean-take pass rate (2/2)
 
----
-
-## Setup & Execution Guide
-
-### 1. Prerequisites (`ffmpeg`)
-Audio files in `recordings/eval-interviews/raw/` are in `.m4a` format and must be converted to `.wav` via `ffmpeg`.
-
-If `ffmpeg` is not installed, install it via Conda:
-```bash
-conda install -c conda-forge ffmpeg -y
-```
-
-Verify the installation:
-```bash
-which ffmpeg
-ffmpeg -version | head -n 1
-```
-
-*(Note: macOS native `/usr/bin/afconvert` can serve as a fallback if Conda is unavailable.)*
+### Original 27-Take Interview Benchmark (741 Notes)
+- **Error Precision:** 0.48 $\rightarrow$ **0.75** (+27.0%)
+- **Error Recall:** **0.78**
+- **Overall Error $F_1$:** 0.60 $\rightarrow$ **0.76** (+0.16)
 
 ---
 
-### 2. Audio Conversion
-Convert raw `.m4a` interview files into 16-bit PCM `.wav` format:
+## Setup & Installation
+
+### 1. Python Dependencies
+Install the core audio processing and FastAPI dependencies:
 ```bash
-.venv/bin/python -m eval.cli convert
-```
-* Converted `.wav` files are written to `recordings/eval-interviews/processed/`.
-
----
-
-### 3. Running Evaluation & Benchmarking
-Run the alignment and diagnostic scoring pipeline across all labeled interview takes:
-```bash
-.venv/bin/python -m eval.cli run --model v2 --split all
-```
-
-Expected behavior:
-* **Skipped takes:** Old missing test audio (`c_major_asc`, `c_scale_1h_1wrong`, `odeharm`, etc.) and unlabelled takes (`1ode-2h-1`, `1ode-2h-2`) are automatically skipped.
-* **Evaluation corpus:** Executes across 27 valid interview takes (~15–30 seconds per take).
-* **Terminal output:** Prints per-take gold vs. predicted error counts, piece-level precision/recall/$F_1$ metrics, confusion matrices, and detailed note disagreements.
-* **Artifacts:** Output plots are generated under `eval/runs/<timestamp>_v2_nogit/plots/`:
-  * `overview.png`
-  * `confusion.png`
-
----
-
-### 4. Inspecting Individual Take Alignments
-To run the standalone pipeline on a single audio file and generate the diagnostic alignment timeline plot:
-```bash
-.venv/bin/python stft_hmm_v2.py --mp3 recordings/eval-interviews/processed/1ode-1h-1.wav --model ode_melody --plot-path viterbi_alignment_v2.png
-```
+python -m pip install -r requirements.txt
