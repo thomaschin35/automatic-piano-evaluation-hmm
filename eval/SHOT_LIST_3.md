@@ -34,9 +34,7 @@ forgot), don't redo it. Write the take number and what happened in
 
 ## The pieces
 
-**Pieces you have played before:** Ode to Joy (melody, and melody with the left-hand bass),
-C major scale going up (right hand, and hands together an octave apart), E major scale going up
-hands together.
+**Pieces you have played before:** Ode to Joy (melody alone, and melody with the left-hand bass).
 
 **New pieces:**
 
@@ -58,6 +56,13 @@ many beats to hold it:
 | LH (two-hand only) | C3 4 | F3 2, C3 2 | F3 2, C3 2 | G3 2, C3 2 |
 
 In the two-hand version, each left-hand note starts together with the right-hand note above it.
+
+**Ode to Joy** (melody alone for one hand; with the bass for two hands):
+
+| Hand | Bar 1 | Bar 2 | Bar 3 | Bar 4 |
+|---|---|---|---|---|
+| RH | E4 1, E4 1, F4 1, G4 1 | G4 1, F4 1, E4 1, D4 1 | C4 1, C4 1, D4 1, E4 1 | E4 1½, D4 ½, D4 2 |
+| LH (two-hand only) | C3 2, rest 2 | G3 2, rest 2 | C3 2, rest 2 | G3 2, rest 2 |
 
 **Hot Cross Buns:**
 
@@ -101,6 +106,8 @@ In the two-hand version, each left-hand note starts together with the right-hand
 | combination (two mistakes) | 2 | 2 |
 | **total** | **25** | **24** |
 | *optional: held too long* | *2* | *1* |
+
+Two-hand takes use real pieces only (Ode with bass, Twinkle with bass); scales are one-hand only.
 
 ---
 
@@ -163,57 +170,59 @@ In the two-hand version, each left-hand note starts together with the right-hand
 
 ## Two hands (prefix `5`, `-2h-`)
 
+Real pieces only: **Ode with bass** and **Twinkle with bass**. Scales stay in the one-hand group.
+
 ### Clean
 | # | File | What to play | Label |
 |---|---|---|---|
-| 26 ★ | `5cmajor-2h-clean` | C major hands together, no mistakes | perfect |
-| 27 | `5emajor-2h-clean` | E major hands together, no mistakes | perfect |
-| 28 ★ | `5ode-2h-clean` | Ode with bass, no mistakes | perfect |
-| 29 ★ | `5twinkle-2h-clean` | Twinkle with bass, no mistakes | perfect |
-| 30 | `5twinkle-2h-soft` | Twinkle with bass, as quietly as you can while every note still sounds | perfect |
+| 26 ★ | `5ode-2h-clean` | Ode with bass, no mistakes | perfect |
+| 27 | `5ode-2h-fast` | Ode with bass, clearly faster than normal, no mistakes | perfect |
+| 28 ★ | `5twinkle-2h-clean` | Twinkle with bass, no mistakes | perfect |
+| 29 | `5twinkle-2h-soft` | Twinkle with bass, as quietly as you can while every note still sounds | perfect |
+| 30 | `5ode-2h-soft` | Ode with bass, quietly | perfect |
 
 ### Wrong pitch
 | # | File | What to play | Label |
 |---|---|---|---|
-| 31 ★ | `5cmajor-2h-wrongrh4` | C major: right hand **F#4** instead of F4 (left hand F3 correct) | RH4 wrong_pitch, played F#4 |
-| 32 ★ | `5emajor-2h-wronglh3` | E major: left hand **G3** instead of G#3 (right hand correct) | LH3 wrong_pitch, played G3 |
+| 31 ★ | `5ode-2h-wrongrh3` | Ode with bass, bar 1: right hand **F#4** instead of F4 | RH3 wrong_pitch, played F#4 |
+| 32 ★ | `5twinkle-2h-wronglh4` | Twinkle with bass, bar 3 beat 1: left hand **E3** instead of F3 | LH4 wrong_pitch, played E3 |
 | 33 | `5ode-2h-wronglh2` | Ode with bass, bar 2: left hand **A3** instead of G3 | LH2 wrong_pitch, played A3 |
 | 34 | `5twinkle-2h-wrongrh10` | Twinkle with bass, bar 3: right hand **D#4** instead of the first E4 | RH10 wrong_pitch, played D#4 |
 
 ### Missed
 | # | File | What to play | Label |
 |---|---|---|---|
-| 35 ★ | `5cmajor-2h-misslh5` | C major: left hand **leaves out G3**; the right hand plays G4 | LH5 missed |
+| 35 ★ | `5twinkle-2h-misslh6` | Twinkle with bass, bar 4: left hand **leaves out G3**; the right hand plays D4 | LH6 missed |
 | 36 | `5twinkle-2h-misslh2` | Twinkle with bass, bar 2: left hand **leaves out F3** | LH2 missed |
 | 37 ★ | `5ode-2h-missrh4` | Ode with bass, bar 1: right hand **leaves out the G4** on beat 4, keep the beat | RH4 missed |
-| 38 | `5emajor-2h-missrh6` | E major: right hand **leaves out C#5**; the left hand plays C#4 | RH6 missed |
+| 38 | `5ode-2h-missrh11` | Ode with bass, bar 3: right hand **leaves out D4** (beat 3), keep the beat | RH11 missed |
 
 ### Extra
 | # | File | What to play | Label |
 |---|---|---|---|
 | 39 ★ | `5twinkle-2h-extralh` | Twinkle with bass, bar 1 beat 3: left hand strikes **C3 again** (it should be held) | extra after LH1, played C3 |
-| 40 | `5cmajor-2h-extrarh` | C major: right hand plays **E4 twice** (left hand once) | extra after RH3, played E4 |
+| 40 | `5twinkle-2h-extrarh` | Twinkle with bass, bar 2: right hand plays A4 **three** times instead of two | extra after RH6, played A4 |
 | 41 | `5ode-2h-extra-a4` | Ode with bass, bar 2: right hand taps **A4** between F4 and E4 | extra after RH6, played A4 |
 
 ### Late
 | # | File | What to play | Label |
 |---|---|---|---|
-| 42 ★ | `5cmajor-2h-late-both5` | C major: after F, **lift both hands**, wait about one beat, then G | RH5 late; LH5 late |
+| 42 ★ | `5twinkle-2h-late-both8` | Twinkle with bass: after bar 2, **lift both hands**, wait about one beat, then bar 3 | RH8 late; LH4 late |
 | 43 ★ | `5twinkle-2h-late-lh2` | Twinkle with bass, bar 2: left hand F3 comes **about half a beat after** the right hand's A4 | LH2 late |
 | 44 | `5ode-2h-late-held9` | Ode with bass: **keep the bar-2 keys held**, wait about one beat, then bar 3 with both hands | RH9 late; LH3 late |
-| 45 | `5emajor-2h-late-rh5` | E major: right hand B4 comes **about half a beat after** the left hand's B3 | RH5 late |
+| 45 | `5ode-2h-late-rh5` | Ode with bass, bar 2 beat 1: right hand G4 comes **about half a beat after** the left hand's G3 | RH5 late |
 
 ### Restart
 | # | File | What to play | Label |
 |---|---|---|---|
 | 46 ★ | `5twinkle-2h-restart` | Twinkle with bass: play to the G4 held 2 beats (end of bar 2), stop, start again **from the beginning** with both hands, play to the end | perfect; comment "restart RH7 -> RH1" |
-| 47 | `5cmajor-2h-restart` | C major: play up to A, stop, go back to **G** (start of bar 2) with both hands, play to the end | perfect; comment "restart RH6 -> RH5" |
+| 47 | `5ode-2h-restart-bar2` | Ode with bass: play to the D4 at the end of bar 2, stop, go back to the **G4 at the start of bar 2** (with the LH G3), play to the end | perfect; comment "restart RH8 -> RH5" |
 
 ### Combination
 | # | File | What to play | Label |
 |---|---|---|---|
 | 48 ★ | `5ode-2h-wrongrh7-misslh4` | Ode with bass: right hand **D#4** instead of E4 in bar 2, and left hand **leaves out G3** in bar 4 | RH7 wrong_pitch, played D#4; LH4 missed |
-| 49 | `5emajor-2h-wrong3-late5` | E major: right hand **G4** instead of G#4, and pause both hands about one beat before bar 2 | RH3 wrong_pitch, played G4; RH5 late; LH5 late |
+| 49 | `5twinkle-2h-wrong3-late12` | Twinkle with bass: right hand **F#4** instead of the first G4 in bar 1, and pause both hands about one beat before bar 4 | RH3 wrong_pitch, played F#4; RH12 late; LH6 late |
 
 ---
 
@@ -226,4 +235,4 @@ them if you would rather keep overlaps out of the test, as decided on 2026-11-13
 |---|---|---|---|
 | 50 | `5ode-1h-held3` | Ode bar 1: keep **F4 held down** while you play G4 on time; let go about half a beat later | RH3 held_long |
 | 51 | `5clow-1h-held3` | Low C scale going up: keep **E3 held down** while you play F3 on time; let go about half a beat later | RH3 held_long |
-| 52 | `5cmajor-2h-heldrh2` | C major hands together: right hand keeps **D4 held down** while both hands play E on time | RH2 held_long |
+| 52 | `5twinkle-2h-heldrh9` | Twinkle with bass, bar 3: right hand keeps the second **F4 held down** while it plays E4 (with the LH C3) on time | RH9 held_long |
