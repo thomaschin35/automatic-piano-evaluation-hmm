@@ -862,3 +862,79 @@ found / false / not found, strict:
 
 Nearly every real mistake is found (6 not found of 46); the score is lost to false alarms.
 Not yet looked at: which notes and why.
+
+## 2026-11-19 17:50  baseline with round 3 added (model as scored blind)
+
+```
+SCOREBOARD  model=v3  (327.1s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all               153  2252 |   0.85   0.81   0.97 |       0.75  1.00  0.86 |  0.79  0.96  0.67  0.97   -   | 43/51
+  mono              116  1543 |   0.89   0.86   1.00 |       0.86  1.00  0.92 |  0.86  1.00  0.68  1.00   -   | 33/37
+  two_hand           37   709 |   0.72   0.67   0.89 |       0.52  1.00  0.68 |  0.62  0.80  0.60  0.89   -   | 10/14
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  mono_round2        46   550 |   0.99   0.98   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.95  1.00   -   | 9/9
+  two_hand_p3         6   108 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 2/2
+  mono_round3        25   444 |   0.61   0.52   1.00 |       0.53  1.00  0.69 |  0.53  1.00  0.24  1.00   -   | 3/7
+  two_hand_round3    24   480 |   0.66   0.59   0.86 |       0.44  1.00  0.61 |  0.52  0.77  0.50  0.86   -   | 3/7
+  mono counts, found/false/not found: wrong=28/9/0  missed=27/0/0  extra=15/10/4  late=23/0/0  held=0/0/0  restart=10/0/0  before-restart mistakes=1/0/0
+
+ONSET-ONLY (pitch term off): 24/27 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          26 |  0.88 |       0.00   -    0.00 |    -       -   | 0.15
+  sub                          1344 |  0.82 |       0.89  1.00  0.94 |    -       -   | 0.22
+  shift                         174 |  0.68 |       0.92  0.88  0.90 |    -       -   | 0.44
+  miss_ins_step                 310 |  0.81 |       0.88  1.00  0.93 |    -       -   | 0.25
+  miss_ins_repeat               310 |  0.81 |       0.88  1.00  0.94 |    -       -   | 0.24
+  miss_del                      284 |  0.80 |       0.87  0.98  0.92 |    -       -   | 0.25
+  extra_score                   284 |  0.79 |       0.83  0.98  0.90 |   1.00     -   | 0.26
+  extra_dup                     284 |  0.77 |       0.00   -    0.00 |   0.95     -   | 0.30
+  hold                          310 |  0.81 |       0.00   -    0.00 |    -      1.00 | 0.24
+  gap                           310 |  0.80 |       0.00   -    0.00 |    -      0.99 | 0.25
+  overlap                       240 |  0.47 |       0.00   -    0.00 |    -       -   | 0.30
+  stop_early                     52 |  0.94 |       0.98  1.00  0.99 |    -       -   | 0.08
+  restart                       402 |  0.78 |       0.00   -    0.00 |    -       -   | 0.27 | restart located  1.00
+  restart_wrong                 372 |  0.78 |       0.00   -    0.00 |    -       -   | 0.28 | restart located  0.99 | before-restart mistake P  0.96 R  0.98
+
+REAL-TAKE DISAGREEMENTS (36)
+  5buns-1h-wrong11 RH8 C4 gold=correct pred=wrong_pitch
+  5chigh-1h-clean RH3 E5 gold=correct pred=wrong_pitch
+  5chigh-1h-clean RH13 E5 gold=correct pred=wrong_pitch
+  5chigh-1h-extra-g5 RH4 F5 gold=correct pred=wrong_pitch
+  5chigh-1h-miss6-extra13 RH3 E5 gold=correct pred=wrong_pitch
+  5chigh-1h-wrong10 RH3 E5 gold=correct pred=wrong_pitch
+  5clow-1h-clean RH13 E3 gold=correct pred=wrong_pitch
+  5frere-1h-extra-start RH1 C4 gold=correct pred=wrong_pitch
+  5ode-2h-extra-a4 RH7 E4 gold=correct pred=wrong_pitch
+  5ode-2h-fast RH10 C4 gold=correct pred=missed
+  5ode-2h-late-rh5 RH5 G4 gold=correct+late pred=missed
+  5ode-2h-missrh4 RH10 C4 gold=correct pred=wrong_pitch
+  5rests-1h-extra-rest RH2 E4 gold=correct pred=wrong_pitch
+  5twinkle-2h-clean RH9 F4 gold=correct pred=wrong_pitch
+  5twinkle-2h-extralh RH3 G4 gold=correct pred=wrong_pitch
+  5twinkle-2h-late-lh2 RH2 C4 gold=correct pred=wrong_pitch
+  5twinkle-2h-late-lh2 LH2 F3 gold=correct+late pred=missed
+  5twinkle-2h-late-lh2 RH9 F4 gold=correct pred=wrong_pitch
+  5twinkle-2h-misslh2 RH4 G4 gold=correct pred=wrong_pitch
+  5twinkle-2h-restart RH9 F4 gold=correct pred=wrong_pitch
+  5twinkle-2h-soft RH9 F4 gold=correct pred=wrong_pitch
+  5twinkle-2h-wrong3-late12 RH9 F4 gold=correct pred=wrong_pitch
+  5twinkle-2h-wrongrh10 RH9 F4 gold=correct pred=wrong_pitch
+  4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
+  5chigh-1h-extra-g5 extras tp/fp/fn=0/0/1
+  5chigh-1h-miss6-extra13 extras tp/fp/fn=1/2/0
+  5frere-1h-clean extras tp/fp/fn=0/1/0
+  5frere-1h-extra-start extras tp/fp/fn=0/1/1
+  5frere-1h-late-held9 extras tp/fp/fn=0/2/0
+  5frere-1h-miss11 extras tp/fp/fn=0/2/0
+  5frere-1h-restart-bar3 extras tp/fp/fn=0/2/0
+  5ode-2h-extra-a4 extras tp/fp/fn=0/0/1
+  5ode-2h-late-held9 extras tp/fp/fn=0/1/0
+  5ode-2h-late-rh5 extras tp/fp/fn=0/1/0
+  5rests-1h-extra-rest extras tp/fp/fn=0/0/1
+  5twinkle-2h-late-lh2 extras tp/fp/fn=0/1/0
+```
