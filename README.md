@@ -23,7 +23,7 @@ flag from the second on top (a wrong note can also be late).
 | What was played | correct | the written key |
 | | wrong pitch | another key instead of the written one (the key is named) |
 | | missed | the written note was never played |
-| | extra | a note the score does not have |
+| | extra | a note the score does not have. A wrong key struck **on** a note's beat and then corrected is that note's wrong pitch; a key struck **before** the beat, with the right note on its beat, is an extra |
 | When / how long | late | the note **started** late, whatever the reason: the player paused, or kept the previous key down and waited. The reason is printed beside it. |
 | | held too long | the key was **not released** when the next note was played on time. Detected conservatively (no false flags on real takes; see HANDOFF.md 6.4); not yet in the goal score. |
 | Going back | restart | the player went back to an earlier note and played on, reported as (last note before going back, note resumed at). The notes are judged on the final attempt. Labelled by writing `restart RH7 -> RH5` in a sheet comment; scored as an exact match. |

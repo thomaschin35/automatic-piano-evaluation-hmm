@@ -1027,3 +1027,80 @@ equal or slightly better). One two-hand extra "found" before (5twinkle-2h-extral
 counted near the real C3; that hit is gone, the real C3 re-strike is still read as a wrong G4.
 Left from round 3: extras named as "wrong, then corrected" (4), hands not together (2), fast
 repeated C4 seen only at its octave (1), low E3 heard as E4 (1), ode-2h RH10 C4 at fast tempo (1).
+
+## 2026-11-19 18:22  fix 3: a stray key before the beat (note on its beat) is an extra, not 'wrong then corrected'; fix 4: a two-voice note's missing key struck up to 1 beat later is that note, late (hands not together)
+
+```
+SCOREBOARD  model=v3  (166.2s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all               153  2252 |   0.96   0.95   1.00 |       0.93  1.00  0.97 |  0.95  0.99  0.89  1.00   -   | 49/51
+  mono              116  1543 |   0.97   0.96   1.00 |       0.95  1.00  0.97 |  0.95  1.00  0.92  1.00   -   | 36/37
+  two_hand           37   709 |   0.93   0.90   1.00 |       0.88  1.00  0.94 |  0.95  0.92  0.75  1.00   -   | 13/14
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  mono_round2        46   550 |   0.99   0.98   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.95  1.00   -   | 9/9
+  two_hand_p3         6   108 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 2/2
+  mono_round3        25   444 |   0.88   0.85   1.00 |       0.77  1.00  0.87 |  0.77  1.00  0.80  1.00   -   | 6/7
+  two_hand_round3    24   480 |   0.91   0.87   1.00 |       0.85  1.00  0.92 |  0.92  0.91  0.67  1.00   -   | 6/7
+  mono counts, found/false/not found: wrong=28/3/0  missed=27/0/0  extra=17/1/2  late=23/0/0  held=0/0/0  restart=10/0/0  before-restart mistakes=1/0/0
+
+ONSET-ONLY (pitch term off): 26/27 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          26 |  0.96 |       0.00   -    0.00 |    -       -   | 0.04
+  sub                          1344 |  0.96 |       0.96  1.00  0.98 |    -       -   | 0.04
+  shift                         174 |  0.83 |       0.95  0.89  0.92 |    -       -   | 0.19
+  miss_ins_step                 310 |  0.95 |       0.95  1.00  0.97 |    -       -   | 0.05
+  miss_ins_repeat               310 |  0.95 |       0.96  1.00  0.98 |    -       -   | 0.05
+  miss_del                      284 |  0.94 |       0.95  0.98  0.96 |    -       -   | 0.07
+  extra_score                   284 |  0.92 |       0.93  0.96  0.95 |   1.00     -   | 0.08
+  extra_dup                     284 |  0.91 |       0.00   -    0.00 |   0.95     -   | 0.10
+  hold                          310 |  0.95 |       0.00   -    0.00 |    -      1.00 | 0.05
+  gap                           310 |  0.95 |       0.00   -    0.00 |    -      0.99 | 0.05
+  overlap                       240 |  0.62 |       0.00   -    0.00 |    -       -   | 0.06
+  stop_early                     52 |  0.98 |       1.00  1.00  1.00 |    -       -   | 0.02
+  restart                       402 |  0.95 |       0.00   -    0.00 |    -       -   | 0.05 | restart located  1.00
+  restart_wrong                 372 |  0.94 |       0.00   -    0.00 |    -       -   | 0.07 | restart located  0.99 | before-restart mistake P  1.00 R  0.98
+
+REAL-TAKE DISAGREEMENTS (10)
+  5buns-1h-wrong11 RH8 C4 gold=correct pred=wrong_pitch
+  5chigh-1h-extra-g5 RH4 F5 gold=correct pred=wrong_pitch
+  5clow-1h-clean RH13 E3 gold=correct pred=wrong_pitch
+  5ode-2h-fast RH10 C4 gold=correct pred=missed
+  5twinkle-2h-extralh RH3 G4 gold=correct pred=wrong_pitch
+  4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
+  5chigh-1h-extra-g5 extras tp/fp/fn=0/0/1
+  5chigh-1h-miss6-extra13 extras tp/fp/fn=1/1/0
+  5ode-2h-late-held9 extras tp/fp/fn=0/1/0
+  5twinkle-2h-extralh extras tp/fp/fn=0/0/1
+```
+
+## 2026-11-19 — fixes 3 and 4 from round 3: extra vs "wrong, then corrected"; hands not together
+
+Fix 3 (`report`, `correction_early_beats` 0.15): a wrong key followed by the right one counts as
+"wrong pitch, corrected" only when the wrong key took the note's place, struck on its beat (no more
+than 0.15 beat early), and the right note followed. A key struck before the beat with the right
+note on its beat is an **extra**; so is a stray before the first note. Measured on all six
+"corrected" verdicts: the two labelled wrong (3ode-1h-fix6, 4ode-1h-wrong-fix12) have the stray at
+-0.00 / -0.04 beat; the labelled extras at -0.97 (rests) and -0.21 (ode A4) and one first note.
+Still read as corrected: 5chigh-1h-extra-g5 (the tapped G5 landed on F5's beat, F5 a beat late:
+the audio is the same as a wrong-then-corrected note).
+Fix 4 (`report`, `split_max_beats` 1.0): a two-voice note matched with one key missing, and that
+key struck alone up to 1 beat later (before the next note), is that note with one hand behind:
+correct, flagged late (reason "hands not together") when the lag is >= late_beats.
+
+| goal F1 | before | after |
+|---|---|---|
+| one hand, round 3 | 0.79 | 0.88 |
+| two hands, round 3 | 0.75 | 0.91 |
+| rounds 1-2, player 3 two-hand | unchanged | unchanged |
+
++/-25% on both settings: nothing moves. Synthetic `extra_score` strict recall 0.982 -> 0.964: those
+cases put the stray on the next note's beat with the note a beat late (labelled wrong, corrected);
+where the local tempo wobbles the stray reads as early and becomes an extra.
+Left from round 3: 5chigh-1h-extra-g5 (above), 5twinkle-2h-extralh (real C3 re-strike under G4 read
+as wrong G4), fast repeated C4 seen only as C5 (buns), low E3 heard as E4, ode-2h-fast RH10, a
+phantom-ish G2 extra in ode-2h-late-held9, 4ode-1h-extra-d15-quick (old).

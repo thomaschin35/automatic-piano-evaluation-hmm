@@ -102,6 +102,10 @@ class V3Config:
                                          # neighbouring note's key at this fraction of that note's strength
     correction_max_beats: float = 1.5    # a wrong key is "corrected" by the note that follows within this many
                                          # beats; a stray key further ahead of the note is an extra instead
+    correction_early_beats: float = 0.15 # ... and only when the wrong key took the note's place, struck on its
+                                         # beat: a key struck before the beat, with the note on its beat, is an extra
+    split_max_beats: float = 1.0      # hands not together: a written key missing from a two-voice note may
+                                      #   arrive up to this many beats later; it is that note, played late
     tempo_passes: int = 2
     # --- keys that share a partial: a key a fourth, fifth or octave from a struck key collects that key's
     # shared partial in its own score, so it can look struck without sounding (a "phantom": E5 lights up
@@ -973,8 +977,12 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
                 continue
             target = min(vs, key=lambda v: abs(v.pitch - x.pitch))
             lead = (ev.frame - x.frame) * an.seconds_per_frame / an.seconds_per_beat[e]
+            # where the note's beat fell, from the previous note at the local tempo (None: first note)
+            early = None if last_ev is None else (
+                (x.frame - last_ev.frame) * an.seconds_per_frame / an.seconds_per_beat[e]
+                - (pos.beat - an.positions[last_pos].beat))
             if (x.pitch in prev_set or x.pitch in pos.pitches or m.kind == "back" or target.label != "correct"
-                    or lead > cfg.correction_max_beats):
+                    or lead > cfg.correction_max_beats or early is None or early < -cfg.correction_early_beats):
                 extras.append((last_pos, x.pitch, x.frame))
             else:
                 target.label, target.played, target.corrected = "wrong_pitch", x.pitch, True
@@ -985,6 +993,30 @@ def report(an: Analysis, cfg: V3Config | None = None, bundle=None) -> Report:
         last_pos, last_ev = m.position, ev
         prev_pitches = tuple(v.played for v in vs if v.played is not None)
     extras += [(last_pos, x.pitch, x.frame) for x in pending if clear(x, [last_ev])]
+    # hands not together: a two-voice note matched with one key missing, and that key struck on its own
+    # shortly after (before the next matched note), is the note with one hand behind: correct, late
+    order = sorted(an.matches, key=lambda mm: mm.event)
+    for a, c in zip(order, order[1:] + [None]):
+        vs = by_event.get(a.event, [])
+        if len(vs) < 2:
+            continue
+        stop = c.event if c is not None else len(an.events)
+        spb = an.seconds_per_beat[a.event]
+        for v in vs:
+            if v.label != "missed":
+                continue
+            for k in range(a.event + 1, stop):
+                x = an.events[k]
+                lag = (x.frame - an.events[a.event].frame) * an.seconds_per_frame / spb
+                if lag > cfg.split_max_beats:
+                    break
+                if any(q == v.pitch and f == x.frame for _, q, f in extras):
+                    extras = [t for t in extras if not (t[1] == v.pitch and t[2] == x.frame)]
+                    v.label, v.played, v.frame = "correct", v.pitch, x.frame
+                    if lag >= cfg.late_beats:
+                        v.flags.add("late")
+                        v.late_reason, v.late_beats = "hands not together", float(lag)
+                    break
     earlier: list[tuple[int, int, PitchVerdict]] = []
     for pos in an.positions:
         ts = touches.get(pos.index, [])
