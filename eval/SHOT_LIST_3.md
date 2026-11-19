@@ -30,7 +30,7 @@ forgot), don't redo it. Write the take number and what happened in
   behind, not a slight smudge.
 - **Missed notes:** leave the note out but **keep the beat**: the next note still comes on time.
 - **Restarts:** stop, go back to the named note, and play on to the end without the mistake.
-- All pieces start on middle C (C4) unless the table says otherwise. "Long" means two beats.
+- Note names give the octave: C4 is middle C.
 
 ## The pieces
 
@@ -40,16 +40,53 @@ hands together.
 
 **New pieces:**
 
-| Piece | Right hand | Left hand |
-|---|---|---|
-| **Twinkle** | C C G G / A A G(long) / F F E E / D D C(long) | (two-hand version only) C3 held 4 beats / F3(long) C3(long) / F3(long) C3(long) / G3(long) C3(long) |
-| **Hot Cross Buns** | E D C(long) / E D C(long) / C C C C D D D D (twice as fast) / E D C(long) | none |
-| **Frere Jacques** | C D E C, C D E C / E F G(long), E F G(long) / G A G F (fast) E C, G A G F (fast) E C / C G3 C(long), C G3 C(long) | none |
-| **Low C scale** | C3 up to C4 and back down to C3 | none |
-| **High C scale** | C5 up to C6 and back down to C5 | none |
-| **Rests** | C, rest, E, rest / G, rest, C5(long) / G, rest, E, rest / C(hold 4 beats). Lift the finger for each rest. | none |
+All pieces are in 4/4: four beats per bar, `|` marks a bar line. The number after each note is how
+many beats to hold it:
 
-In the two-hand Twinkle, each left-hand note starts together with the right-hand note above it.
+| Number | Note value | Count |
+|---|---|---|
+| ½ | eighth note | two notes per beat: "1-and" |
+| 1 | quarter note | one beat |
+| 2 | half note | two beats |
+| 4 | whole note | the whole bar |
+
+**Twinkle** (about 100 beats per minute):
+
+| Hand | Bar 1 | Bar 2 | Bar 3 | Bar 4 |
+|---|---|---|---|---|
+| RH | C4 1, C4 1, G4 1, G4 1 | A4 1, A4 1, G4 2 | F4 1, F4 1, E4 1, E4 1 | D4 1, D4 1, C4 2 |
+| LH (two-hand only) | C3 4 | F3 2, C3 2 | F3 2, C3 2 | G3 2, C3 2 |
+
+In the two-hand version, each left-hand note starts together with the right-hand note above it.
+
+**Hot Cross Buns:**
+
+| Bar 1 | Bar 2 | Bar 3 | Bar 4 |
+|---|---|---|---|
+| E4 1, D4 1, C4 2 | E4 1, D4 1, C4 2 | C4 ½ ×4, D4 ½ ×4 | E4 1, D4 1, C4 2 |
+
+**Frere Jacques:**
+
+| Bar | Notes |
+|---|---|
+| 1 | C4 1, D4 1, E4 1, C4 1 |
+| 2 | C4 1, D4 1, E4 1, C4 1 |
+| 3 | E4 1, F4 1, G4 2 |
+| 4 | E4 1, F4 1, G4 2 |
+| 5 | G4 ½, A4 ½, G4 ½, F4 ½, E4 1, C4 1 |
+| 6 | G4 ½, A4 ½, G4 ½, F4 ½, E4 1, C4 1 |
+| 7 | C4 1, G3 1, C4 2 |
+| 8 | C4 1, G3 1, C4 2 |
+
+**Low C scale:** C3 D3 E3 F3 G3 A3 B3 C4 B3 A3 G3 F3 E3 D3, each 1 beat, then C3 2.
+
+**High C scale:** C5 D5 E5 F5 G5 A5 B5 C6 B5 A5 G5 F5 E5 D5, each 1 beat, then C5 2.
+
+**Rests** (lift the finger during each rest so the key is silent):
+
+| Bar 1 | Bar 2 | Bar 3 | Bar 4 |
+|---|---|---|---|
+| C4 1, rest 1, E4 1, rest 1 | G4 1, rest 1, C5 2 | G4 1, rest 1, E4 1, rest 1 | C4 4 |
 
 ## Balance
 
@@ -90,7 +127,7 @@ In the two-hand Twinkle, each left-hand note starts together with the right-hand
 | # | File | What to play | Label |
 |---|---|---|---|
 | 10 ★ | `5twinkle-1h-miss2` | Twinkle: play only **one** C at the start, leave the second C's beat silent, then G on time | RH2 missed |
-| 11 | `5frere-1h-miss11` | Frere bar 3: play E F, **leave out the long G**, keep the beat | RH11 missed |
+| 11 | `5frere-1h-miss11` | Frere bar 3: play E F, **leave out the G4 (2 beats)**, keep the beat | RH11 missed |
 | 12 | `5buns-1h-miss8` | Buns, fast part: play only **three** C's instead of four, keep the beat | RH8 missed |
 | 13 | `5ode-1h-miss6` | Ode bar 2: G G, **leave out F**, then E D on time | RH6 missed |
 
@@ -105,7 +142,7 @@ In the two-hand Twinkle, each left-hand note starts together with the right-hand
 ### Late
 | # | File | What to play | Label |
 |---|---|---|---|
-| 18 ★ | `5twinkle-1h-late-pause8` | Twinkle, after the first long G: **lift the hand**, wait about one beat in silence, then F | RH8 late |
+| 18 ★ | `5twinkle-1h-late-pause8` | Twinkle, after the G4 held 2 beats at the end of bar 2: **lift the hand**, wait about one beat in silence, then F | RH8 late |
 | 19 ★ | `5frere-1h-late-held9` | Frere, end of bar 2: **keep the last C held down**, wait about one beat, then E | RH9 late |
 | 20 | `5clow-1h-late-pause9` | Low C scale: at the top C4, wait about one beat before B3 | RH9 late |
 | 21 | `5buns-1h-late-pause15` | Buns: pause about one beat before the last E D C | RH15 late |
@@ -113,8 +150,8 @@ In the two-hand Twinkle, each left-hand note starts together with the right-hand
 ### Restart
 | # | File | What to play | Label |
 |---|---|---|---|
-| 22 ★ | `5twinkle-1h-restart` | Twinkle: play up to the first long G, stop, start again **from the beginning**, play to the end | perfect; comment "restart RH7 -> RH1" |
-| 23 | `5frere-1h-restart-bar3` | Frere: play up to the first long G (bar 3), stop, go back to the **E at the start of bar 3**, play to the end | perfect; comment "restart RH11 -> RH9" |
+| 22 ★ | `5twinkle-1h-restart` | Twinkle: play up to the G4 held 2 beats (end of bar 2), stop, start again **from the beginning**, play to the end | perfect; comment "restart RH7 -> RH1" |
+| 23 | `5frere-1h-restart-bar3` | Frere: play up to the G4 held 2 beats (end of bar 3), stop, go back to the **E at the start of bar 3**, play to the end | perfect; comment "restart RH11 -> RH9" |
 
 ### Combination
 | # | File | What to play | Label |
@@ -169,7 +206,7 @@ In the two-hand Twinkle, each left-hand note starts together with the right-hand
 ### Restart
 | # | File | What to play | Label |
 |---|---|---|---|
-| 46 ★ | `5twinkle-2h-restart` | Twinkle with bass: play to the first long G, stop, start again **from the beginning** with both hands, play to the end | perfect; comment "restart RH7 -> RH1" |
+| 46 ★ | `5twinkle-2h-restart` | Twinkle with bass: play to the G4 held 2 beats (end of bar 2), stop, start again **from the beginning** with both hands, play to the end | perfect; comment "restart RH7 -> RH1" |
 | 47 | `5cmajor-2h-restart` | C major: play up to A, stop, go back to **G** (start of bar 2) with both hands, play to the end | perfect; comment "restart RH6 -> RH5" |
 
 ### Combination
