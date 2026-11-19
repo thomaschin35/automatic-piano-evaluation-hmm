@@ -89,7 +89,7 @@ takes are excluded (`exclude` in `eval/manifest.toml` says why).
 Every take here was looked at while fixing, so this is "no known failure", not a measured error
 rate on new music. `python -m eval.generalise` shows the remaining fragility is in three hard takes
 rather than spread over pieces or players.
-Two-hand (13 takes): goal F1 0.56 -> 1.00, 7 / 7 clean, measured on the takes the causes were found on. The new-piece test (round 3,
+Two-hand (13 takes): goal F1 0.56 -> 1.00, 7 / 7 clean, measured on the takes the causes were found on. The blind test (round 3, one hand and two hands, every mistake type,
 [eval/SHOT_LIST_3.md](eval/SHOT_LIST_3.md)) is set up but not recorded.
 
 ## Earlier results (two players, before the taxonomy change)

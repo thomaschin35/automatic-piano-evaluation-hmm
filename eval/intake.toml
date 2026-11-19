@@ -68,6 +68,11 @@ hands = "1h"
 piece = "twinkle"
 
 [[rule]]
+key = "twinkle"
+hands = "2h"
+piece = "twinkle_both"
+
+[[rule]]
 key = "buns"
 hands = "1h"
 piece = "buns"

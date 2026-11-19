@@ -42,7 +42,7 @@ class TestPieces(unittest.TestCase):
         pieces = all_pieces()
         self.assertEqual(set(pieces), {"c_major_rh", "c_major_both", "e_major_rh", "e_major_rh_down", "e_major_both",
                                        "ode_melody", "ode_harmony", "canon_lh", "canon_both",
-                                       "twinkle", "buns", "frere", "c_low", "c_high", "rests"})
+                                       "twinkle", "twinkle_both", "buns", "frere", "c_low", "c_high", "rests"})
 
     def test_note_ids_and_measures(self):
         spec = load_piece("ode_harmony")

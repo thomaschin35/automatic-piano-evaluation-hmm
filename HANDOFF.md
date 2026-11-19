@@ -24,7 +24,7 @@ Written 2026-11-17 for whoever continues this project (a person or a model). Bra
 | Players 1-2 (interviews) | 16 one-hand, 4 two-hand, plus 5 unprefixed early takes | `1`, `2` | the first tuning set |
 | Player 3 | 27 one-hand, 6 two-hand | `3` | shot list [eval/SHOT_LIST.md](eval/SHOT_LIST.md) |
 | Round 2 (player 4) | 46 one-hand | `4` | shot list [eval/SHOT_LIST_2.md](eval/SHOT_LIST_2.md); was held out, then looked at on 2026-11-13, so it is no longer a blind test |
-| Round 3 | **not recorded** | `5` | six new pieces, clean takes only, [eval/SHOT_LIST_3.md](eval/SHOT_LIST_3.md) |
+| Round 3 | **not recorded** | `5` | blind test: 25 one-hand + 24 two-hand takes with every mistake type, old and new pieces, [eval/SHOT_LIST_3.md](eval/SHOT_LIST_3.md). Label from the shot list, score once, write the blind result down before looking at any take |
 
 91 labelled one-hand takes and 13 two-hand takes are scored. Canon and the three overlap takes are
 excluded on purpose (the `exclude` line in the manifest says why). Same piano and phone throughout.
@@ -91,11 +91,14 @@ changes. Round 3 exists to test exactly these.
 ## 6. Open work, in priority order
 
 ### 6.1 Record round 3 (blocks the only real generalisation test)
-16 clean takes, about 10 minutes, no labelling needed (anything flagged is a false alarm). The
-piece files, intake rules and `recordings/round3/` already exist; record, then
-`python -m eval.cli evaluate`. A few takes on a different piano or phone (prefix `6`) would be the
-most valuable recordings in the project. A no-audio check already passes: a perfectly heard
-performance of each of the six pieces raises no flags.
+49 takes (25 one-hand, 24 two-hand, plus 3 optional held-too-long), about 50 minutes; the 20
+takes marked ★ give a first answer in about 20 minutes. Every mistake type in both groups, on the old
+tunes and on new ones (Twinkle, Buns, Frere, low and high C, rests, two-hand Twinkle). Protocol:
+label the takes from the shot list (plus `recordings/round3/notes.txt` for takes that went
+differently), run `python -m eval.cli check --model v3` **once**, write `mono_round3` and
+`two_hand_round3` into `eval/V3_LOG.md` as the blind result, and only then look at takes. A few
+takes on a different piano or phone (prefix `6`) would be the most valuable recordings in the
+project.
 
 ### 6.2 Graded strike evidence (main design change left)
 Today a strike either counts or does not, at fixed cut-offs (`match_min_salience` 0.30,

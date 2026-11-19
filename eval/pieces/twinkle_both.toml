@@ -1,0 +1,19 @@
+# New-piece test (round 3): Twinkle melody over a simple LH bass (half and whole notes).
+name = "twinkle_both"
+title = "Twinkle Twinkle Little Star, first two lines, melody with LH bass"
+time_signature = [4, 4]
+bpm = 100
+
+[hands]
+RH = [
+  ["C4", 1], ["C4", 1], ["G4", 1], ["G4", 1],
+  ["A4", 1], ["A4", 1], ["G4", 2],
+  ["F4", 1], ["F4", 1], ["E4", 1], ["E4", 1],
+  ["D4", 1], ["D4", 1], ["C4", 2],
+]
+LH = [
+  ["C3", 4],
+  ["F3", 2], ["C3", 2],
+  ["F3", 2], ["C3", 2],
+  ["G3", 2], ["C3", 2],
+]

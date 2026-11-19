@@ -83,6 +83,8 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
         "mono_p3": _block([e for e in mono if e.take_id.startswith("3")]),
         "mono_round2": _block([e for e in mono if e.take_id.startswith("4")]),
         "two_hand_p3": _block([e for e in real if e.piece not in synth.MONO_PIECES and e.take_id.startswith("3")]),
+        "mono_round3": _block([e for e in mono if e.take_id.startswith("5")]),
+        "two_hand_round3": _block([e for e in real if e.piece not in synth.MONO_PIECES and e.take_id.startswith("5")]),
     }, "real_errors": [
         f"{r['take']} {r['note_id']} {r['pitch']} gold={r['gold']}{'+' + r['gold_flags'] if r['gold_flags'] else ''}"
         f" pred={r['pred']}{'+' + r['pred_flags'] if r['pred_flags'] else ''}"
