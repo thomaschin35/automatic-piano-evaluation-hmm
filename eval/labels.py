@@ -10,7 +10,7 @@ note id from `python -m eval.cli score <piece>`. Notes not listed are correct.
 
     [[error]]
     note = "RH4"
-    type = "wrong_pitch"     # wrong_pitch | missed | held_long | early | late
+    type = "wrong_pitch"     # wrong_pitch | missed | held_long | late
     played = "E4"            # optional, wrong_pitch only
 
     [[error]]
@@ -199,7 +199,7 @@ def label_template(spec: PieceSpec) -> str:
         "# One [[error]] block per mistake. Examples:",
         "# [[error]]",
         '# note = "RH4"',
-        '# type = "wrong_pitch"   # wrong_pitch | missed | held_long | early | late',
+        '# type = "wrong_pitch"   # wrong_pitch | missed | held_long | late',
         '# played = "E4"          # optional',
         "#",
         "# [[error]]",

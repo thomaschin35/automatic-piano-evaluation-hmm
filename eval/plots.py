@@ -37,7 +37,7 @@ OUTCOMES = {
     "false_alarm": ("False alarm (note was correct)", SERIES[1]),
     "missed": ("Error missed", SERIES[2]),
 }
-# error types in scope (held_long / early are neither labelled nor detected)
+# error types in the goal score (held_long is reported apart)
 ERROR_TYPES = [("wrong_pitch", "Wrong pitch"), ("missed", "Missed note"), ("extra", "Extra note"), ("late", "Late"),
                ("restart", "Went back (restart)")]
 
@@ -145,7 +145,7 @@ def plot_confusion(metrics: dict, run_name: str = "", block: dict | None = None)
     b = block or metrics["overall"]
     conf = b["confusion"]
     names = {"correct": "Correct", "wrong_pitch": "Wrong pitch", "missed": "Missed", "extra": "Extra",
-             "held_long": "Held long", "early": "Early", "late": "Late"}
+             "held_long": "Held long", "late": "Late"}
     labs = [l for l in conf if l == "correct" or sum(conf[l].values()) or sum(conf[g][l] for g in conf)]
     counts = [[conf[g][p] for p in labs] for g in labs]
     fracs = [[c / max(1, sum(row)) for c in row] for row in counts]
@@ -242,7 +242,7 @@ def plot_note_map(rows: list[dict], run_name: str = ""):
     handles += [Patch(color=c, label=l) for l, c in OUTCOMES.values()]
     handles += [Line2D([], [], marker="x", color=SERIES[0], linestyle="none", mew=1.6, label="caught, but wrong error type"),
                 Line2D([], [], marker="o", color=INK, linestyle="none", markersize=4,
-                       label="labeled held/early/late")]
+                       label="labeled held/late")]
     fig.legend(handles=handles, loc="upper left", bbox_to_anchor=(0.012, 1 - 0.95 / fig.get_figheight()),
                ncol=6, frameon=False, fontsize=9, handlelength=1.2, columnspacing=1.4)
     _title(fig, "Every note of every take", f"{run_name}  ·  one row per take, one cell per score note")
@@ -281,7 +281,7 @@ VERDICT_STYLE = {                                       # marker, face, edge
     "wrong_pitch": ("s", SERIES[1], INK),
     "missed": ("v", SERIES[2], INK),
 }
-FLAG_TEXT = {"held_long": "held", "late": "late", "early": "early"}
+FLAG_TEXT = {"held_long": "held", "late": "late"}
 
 
 def plot_take(bundle, an, rep, spec, title: str = "", rows: list[dict] | None = None):

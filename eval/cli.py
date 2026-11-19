@@ -208,7 +208,7 @@ def cmd_sheet_template(args) -> int:
     Edit only label / played / flag / comment:
       label   todo (until you've listened) -> correct | wrong_pitch | missed | extra
       played  pitch actually played, e.g. E4 (wrong_pitch / extra; optional)
-      flag    held_long | early | late (optional, any label)
+      flag    held_long | late (optional, any label)
     An extra note gets its own new row: note_id = the score note it follows
     (or START), label = extra.
     """

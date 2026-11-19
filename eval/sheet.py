@@ -18,7 +18,7 @@ Rules:
     An extra row's note_id is the note it follows, or START.
   * label = correct but `played` names a different pitch -> imported as
     wrong_pitch, with a warning (the note was clearly not played as written).
-  * flag: held_long | early | late (case-insensitive), allowed on any note.
+  * flag: held_long | late (case-insensitive), allowed on any note.
   * restart (backtracking): write "restart RH7 -> RH5" in any comment of the take
     (last note played before going back -> note resumed at). It becomes a
     [[restart]] table and is scored as its own class. Label the notes by the

@@ -20,8 +20,8 @@ Rules:
                        late      = the note STARTED late, whatever the reason (the player paused,
                                    or kept the previous key down and waited);
                        held_long = the key was NOT RELEASED when the next note was played on time
-                                   (it sounds under the next note). Not detected by any model yet.
-                       early     = started early (not labelled or detected yet).
+                                   (it sounds under the next note).
+                       There is no "early": a note that starts early is not an error here.
   * GOING BACK      `restarts` = (last note id played before the jump, note id resumed at);
                     the note labels above judge the final attempt; `earlier` lists the
                     mistakes in an attempt the player abandoned by going back.
@@ -37,7 +37,7 @@ from typing import Literal
 
 NOTE_LABELS = ("correct", "wrong_pitch", "missed")
 NOTE_ERRORS = ("wrong_pitch", "missed")
-FLAGS = ("held_long", "early", "late")
+FLAGS = ("held_long", "late")
 EXTRA = "extra"
 ERROR_TYPES = NOTE_ERRORS + (EXTRA,) + FLAGS
 
