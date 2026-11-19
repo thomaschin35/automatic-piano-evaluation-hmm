@@ -1,0 +1,10 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "twinkle_both"
+perfect = false
+
+[[error]]
+after = "LH1"
+type = "extra"
+played = "C3"
+comment = "round 3 shot list"

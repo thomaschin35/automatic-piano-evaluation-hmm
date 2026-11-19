@@ -6,3 +6,4 @@ perfect = false
 [[error]]
 note = "RH3"
 type = "missed"
+comment = "measured: only two G4 strikes and 14 strikes in all; the F4 was dropped"

@@ -1,0 +1,9 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "ode_harmony"
+perfect = true
+# note RH1: restart RH8 -> RH5
+
+[[restart]]
+from = "RH8"
+to = "RH5"

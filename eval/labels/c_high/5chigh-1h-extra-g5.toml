@@ -1,0 +1,10 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "c_high"
+perfect = false
+
+[[error]]
+after = "RH3"
+type = "extra"
+played = "G5"
+comment = "round 3 shot list"

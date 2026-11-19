@@ -613,3 +613,248 @@ audio = "recordings/round2/4ode-1h-wrong-fix12.m4a"
 id = "4ode-1h-wrong-repeat3"
 piece = "ode_melody"
 audio = "recordings/round2/4ode-1h-wrong-repeat3.m4a"
+
+[[take]]
+id = "5buns-1h-late-pause15"
+piece = "buns"
+audio = "recordings/round3/5buns-1h-late-pause15.m4a"
+
+[[take]]
+id = "5buns-1h-miss8"
+piece = "buns"
+audio = "recordings/round3/5buns-1h-miss8.m4a"
+
+[[take]]
+id = "5buns-1h-wrong11"
+piece = "buns"
+audio = "recordings/round3/5buns-1h-wrong11.m4a"
+
+[[take]]
+id = "5chigh-1h-clean"
+piece = "c_high"
+audio = "recordings/round3/5chigh-1h-clean.m4a"
+
+[[take]]
+id = "5chigh-1h-extra-g5"
+piece = "c_high"
+audio = "recordings/round3/5chigh-1h-extra-g5.m4a"
+
+[[take]]
+id = "5chigh-1h-miss6-extra13"
+piece = "c_high"
+audio = "recordings/round3/5chigh-1h-miss6-extra13.m4a"
+
+[[take]]
+id = "5chigh-1h-wrong10"
+piece = "c_high"
+audio = "recordings/round3/5chigh-1h-wrong10.m4a"
+
+[[take]]
+id = "5clow-1h-clean"
+piece = "c_low"
+audio = "recordings/round3/5clow-1h-clean.m4a"
+
+[[take]]
+id = "5clow-1h-late-pause9"
+piece = "c_low"
+audio = "recordings/round3/5clow-1h-late-pause9.m4a"
+
+[[take]]
+id = "5clow-1h-wrong5"
+piece = "c_low"
+audio = "recordings/round3/5clow-1h-wrong5.m4a"
+
+[[take]]
+id = "5frere-1h-clean"
+piece = "frere"
+audio = "recordings/round3/5frere-1h-clean.m4a"
+
+[[take]]
+id = "5frere-1h-extra-start"
+piece = "frere"
+audio = "recordings/round3/5frere-1h-extra-start.m4a"
+
+[[take]]
+id = "5frere-1h-late-held9"
+piece = "frere"
+audio = "recordings/round3/5frere-1h-late-held9.m4a"
+
+[[take]]
+id = "5frere-1h-miss11"
+piece = "frere"
+audio = "recordings/round3/5frere-1h-miss11.m4a"
+
+[[take]]
+id = "5frere-1h-restart-bar3"
+piece = "frere"
+audio = "recordings/round3/5frere-1h-restart-bar3.m4a"
+
+[[take]]
+id = "5ode-1h-miss6"
+piece = "ode_melody"
+audio = "recordings/round3/5ode-1h-miss6.m4a"
+
+[[take]]
+id = "5ode-1h-wrong3-late9"
+piece = "ode_melody"
+audio = "recordings/round3/5ode-1h-wrong3-late9.m4a"
+
+[[take]]
+id = "5ode-2h-clean"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-clean.m4a"
+
+[[take]]
+id = "5ode-2h-extra-a4"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-extra-a4.m4a"
+
+[[take]]
+id = "5ode-2h-fast"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-fast.m4a"
+
+[[take]]
+id = "5ode-2h-late-held9"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-late-held9.m4a"
+
+[[take]]
+id = "5ode-2h-late-rh5"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-late-rh5.m4a"
+
+[[take]]
+id = "5ode-2h-missrh11"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-missrh11.m4a"
+
+[[take]]
+id = "5ode-2h-missrh4"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-missrh4.m4a"
+
+[[take]]
+id = "5ode-2h-restart-bar2"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-restart-bar2.m4a"
+
+[[take]]
+id = "5ode-2h-soft"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-soft.m4a"
+
+[[take]]
+id = "5ode-2h-wronglh2"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-wronglh2.m4a"
+
+[[take]]
+id = "5ode-2h-wrongrh3"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-wrongrh3.m4a"
+
+[[take]]
+id = "5ode-2h-wrongrh7-misslh4"
+piece = "ode_harmony"
+audio = "recordings/round3/5ode-2h-wrongrh7-misslh4.m4a"
+
+[[take]]
+id = "5rests-1h-clean"
+piece = "rests"
+audio = "recordings/round3/5rests-1h-clean.m4a"
+
+[[take]]
+id = "5rests-1h-extra-rest"
+piece = "rests"
+audio = "recordings/round3/5rests-1h-extra-rest.m4a"
+
+[[take]]
+id = "5twinkle-1h-clean"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-clean.m4a"
+
+[[take]]
+id = "5twinkle-1h-extra-repeat"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-extra-repeat.m4a"
+
+[[take]]
+id = "5twinkle-1h-late-pause8"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-late-pause8.m4a"
+
+[[take]]
+id = "5twinkle-1h-miss2"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-miss2.m4a"
+
+[[take]]
+id = "5twinkle-1h-restart"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-restart.m4a"
+
+[[take]]
+id = "5twinkle-1h-wrong5"
+piece = "twinkle"
+audio = "recordings/round3/5twinkle-1h-wrong5.m4a"
+
+[[take]]
+id = "5twinkle-2h-clean"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-clean.m4a"
+
+[[take]]
+id = "5twinkle-2h-extralh"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-extralh.m4a"
+
+[[take]]
+id = "5twinkle-2h-extrarh"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-extrarh.m4a"
+
+[[take]]
+id = "5twinkle-2h-late-both8"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-late-both8.m4a"
+
+[[take]]
+id = "5twinkle-2h-late-lh2"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-late-lh2.m4a"
+
+[[take]]
+id = "5twinkle-2h-misslh2"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-misslh2.m4a"
+
+[[take]]
+id = "5twinkle-2h-misslh6"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-misslh6.m4a"
+
+[[take]]
+id = "5twinkle-2h-restart"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-restart.m4a"
+
+[[take]]
+id = "5twinkle-2h-soft"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-soft.m4a"
+
+[[take]]
+id = "5twinkle-2h-wrong3-late12"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-wrong3-late12.m4a"
+
+[[take]]
+id = "5twinkle-2h-wronglh4"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-wronglh4.m4a"
+
+[[take]]
+id = "5twinkle-2h-wrongrh10"
+piece = "twinkle_both"
+audio = "recordings/round3/5twinkle-2h-wrongrh10.m4a"

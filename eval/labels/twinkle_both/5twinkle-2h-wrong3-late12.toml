@@ -1,0 +1,17 @@
+# Generated from 'labels_manual_errors.csv' by `python -m eval.cli import-sheet`.
+# Edit the shared sheet and re-import rather than editing this file.
+piece = "twinkle_both"
+perfect = false
+
+[[error]]
+note = "RH3"
+type = "wrong_pitch"
+played = "F#4"
+
+[[error]]
+note = "RH12"
+type = "late"
+
+[[error]]
+note = "LH6"
+type = "late"

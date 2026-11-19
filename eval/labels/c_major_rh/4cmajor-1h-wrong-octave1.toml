@@ -2,6 +2,7 @@
 # Edit the shared sheet and re-import rather than editing this file.
 piece = "c_major_rh"
 perfect = false
+# note RH2: measured: 2 beats after note 1 (hand moved down an octave)
 
 [[error]]
 note = "RH1"

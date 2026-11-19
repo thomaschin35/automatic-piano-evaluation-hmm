@@ -844,3 +844,21 @@ SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  la
 REAL-TAKE DISAGREEMENTS (1)
   4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
 ```
+
+## 2026-11-19 — round 3 BLIND result (scored once, before any take was looked at)
+
+49 takes (`5*`, eval/SHOT_LIST_3.md), labelled from the shot list only. Model unchanged since 797de57.
+found / false / not found, strict:
+
+| Class | One hand (25 takes) | Two hands (24 takes) |
+|---|---|---|
+| goal F1 | 0.61 (17/19/3) | 0.66 (19/17/3) |
+| wrong pitch | 0.53 (5/9/0) | 0.52 (6/11/0) |
+| missed | 1.00 (5/0/0) | 0.77 (5/3/0) |
+| extra | 0.24 (2/10/3) | 0.50 (2/3/1) |
+| late | 1.00 (5/0/0) | 0.86 (6/0/2) |
+| restart | 1.00 (2/0/0) | 1.00 (2/0/0) |
+| clean takes with no flag | 3/7 | 3/7 |
+
+Nearly every real mistake is found (6 not found of 46); the score is lost to false alarms.
+Not yet looked at: which notes and why.
