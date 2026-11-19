@@ -50,7 +50,11 @@ from the audio). Each step is in `eval/V3_LOG.md` with the full scoreboard.
 **These numbers are measured on takes that were looked at while fixing.** They say "no known
 failure on this piano, this phone, these three tunes", not "99% on new music". See section 5.
 
-Two-hand, 13 takes: goal F1 **1.000**, 7 / 7 clean (section 6.3). Held too long: reported, conservative, no false flags on real takes (section 6.4).
+Two-hand, 13 takes: goal F1 **1.000**, 7 / 7 clean (section 6.3).
+
+**Round 3 (blind, 2026-11-19, 49 takes):** goal F1 0.61 one hand / 0.66 two hands when scored
+blind; 0.79 / 0.75 after the phantom-key and ringing-key rules (eval/V3_LOG.md). Most real
+mistakes are found; the remaining loss is false alarms and naming (see V3_LOG for the list). Held too long: reported, conservative, no false flags on real takes (section 6.4).
 
 ## 4. How to check a change
 

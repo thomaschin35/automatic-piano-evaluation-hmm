@@ -345,3 +345,27 @@ class TwoVoices(unittest.TestCase):
         rep = SimpleNamespace(verdicts=verdicts, extras=[(1, 48, 50), (1, 66, 50)], restarts=[], earlier=[])
         pred = report_to_prediction(an, rep, spec, 0.0, frozenset())
         self.assertEqual([x.after_note_id for x in pred.extras], ["LH1", "RH2"])   # C3 after LH1, F#4 after RH2
+
+
+class SharedPartials(unittest.TestCase):
+    """Phantom keys (a fourth/fifth/octave away, borrowing a shared partial) and ringing keys."""
+
+    def test_phantom_never_decides_a_note_but_a_written_interval_keeps_it(self):
+        import stft_hmm_v3 as m
+        cfg = m.V3Config()
+        # E5 (76) struck; B5 (83) scores higher but its fundamental is 18 dB quieter: a phantom
+        ev = m.Event(0, {76: 0.73, 83: 0.92}, [(76, 0.73), (83, 0.92)], phantom={83: 76}, rise={76: 40.0, 83: 27.0})
+        self.assertEqual(m.struck(ev, 83, (83,), cfg), 0.0)          # B5 expected alone: not struck
+        self.assertGreater(m.struck(ev, 83, (76, 83), cfg), 0.0)     # written with E5: a real two-hand note
+        vs, left = m.verdicts_for(ev, m.Position(0, 0.0, (76,), 0), (), cfg)
+        self.assertEqual((vs[0].label, left), ("correct", []))      # E5 is clean, B5 is not an extra
+
+    def test_a_ringing_bass_cannot_erase_the_right_hand_key_on_its_octave(self):
+        import stft_hmm_v3 as m
+        cfg = m.V3Config()
+        # F3 (53) still held; F4 (65) struck again: F3's level twitches but its fundamental does not rise
+        ev = m.Event(0, {53: 0.56, 65: 0.58}, [(53, 0.56)], explained_by={65: 53}, rise={53: 0.0, 65: 10.0})
+        self.assertGreater(m.struck(ev, 65, (65,), cfg), 0.0)
+        # a real wrong key an octave below (its fundamental rises) still erases it
+        ev.rise = {53: 30.0, 65: 10.0}
+        self.assertEqual(m.struck(ev, 65, (65,), cfg), 0.0)

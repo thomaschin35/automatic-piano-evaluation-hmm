@@ -938,3 +938,92 @@ REAL-TAKE DISAGREEMENTS (36)
   5rests-1h-extra-rest extras tp/fp/fn=0/0/1
   5twinkle-2h-late-lh2 extras tp/fp/fn=0/1/0
 ```
+
+## 2026-11-19 18:05  phantom keys (shared partial, fundamental >=12 dB quieter, not written there) and ringing keys (fundamental rose <6 dB) can no longer decide or erase a note
+
+```
+SCOREBOARD  model=v3  (375.7s)
+
+goal = all five classes: what was played (wrong, missed, extra) + when (late, held too long)
+REAL TAKES        takes notes | goal F1 played timing | strict P     R    F1 | wrong missed extra  late  held | clean
+  all               153  2252 |   0.91   0.90   0.97 |       0.88  1.00  0.93 |  0.91  0.96  0.77  0.97   -   | 49/51
+  mono              116  1543 |   0.95   0.93   1.00 |       0.92  1.00  0.96 |  0.92  1.00  0.86  1.00   -   | 36/37
+  two_hand           37   709 |   0.81   0.77   0.89 |       0.75  1.00  0.86 |  0.90  0.80  0.44  0.89   -   | 13/14
+  mono_p1             8    99 |   1.00   1.00    -   |       1.00  1.00  1.00 |  1.00  1.00   -     -     -   | 6/6
+  mono_p2             8   106 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00   -    1.00   -   | 5/5
+  mono_p3            27   328 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 9/9
+  mono_round2        46   550 |   0.99   0.98   1.00 |       1.00  1.00  1.00 |  1.00  1.00  0.95  1.00   -   | 9/9
+  two_hand_p3         6   108 |   1.00   1.00   1.00 |       1.00  1.00  1.00 |  1.00  1.00  1.00  1.00   -   | 2/2
+  mono_round3        25   444 |   0.79   0.73   1.00 |       0.67  1.00  0.80 |  0.67  1.00  0.50  1.00   -   | 6/7
+  two_hand_round3    24   480 |   0.75   0.71   0.86 |       0.69  1.00  0.81 |  0.86  0.77  0.29  0.86   -   | 6/7
+  mono counts, found/false/not found: wrong=28/5/0  missed=27/0/0  extra=15/1/4  late=23/0/0  held=0/0/0  restart=10/0/0  before-restart mistakes=1/0/0
+
+ONSET-ONLY (pitch term off): 26/27 clean monophonic takes still flag nothing
+
+SYNTHETIC (clean mono takes)  cases | exact | strict P     R    F1 | extra R  late R | false flags/case
+  clean                          26 |  0.96 |       0.00   -    0.00 |    -       -   | 0.04
+  sub                          1344 |  0.96 |       0.96  1.00  0.98 |    -       -   | 0.04
+  shift                         174 |  0.83 |       0.95  0.89  0.92 |    -       -   | 0.18
+  miss_ins_step                 310 |  0.95 |       0.95  1.00  0.97 |    -       -   | 0.05
+  miss_ins_repeat               310 |  0.95 |       0.96  1.00  0.98 |    -       -   | 0.05
+  miss_del                      284 |  0.94 |       0.95  0.98  0.96 |    -       -   | 0.07
+  extra_score                   284 |  0.93 |       0.93  0.98  0.96 |   1.00     -   | 0.07
+  extra_dup                     284 |  0.91 |       0.00   -    0.00 |   0.95     -   | 0.10
+  hold                          310 |  0.95 |       0.00   -    0.00 |    -      1.00 | 0.05
+  gap                           310 |  0.95 |       0.00   -    0.00 |    -      0.99 | 0.05
+  overlap                       240 |  0.62 |       0.00   -    0.00 |    -       -   | 0.06
+  stop_early                     52 |  0.98 |       1.00  1.00  1.00 |    -       -   | 0.02
+  restart                       402 |  0.95 |       0.00   -    0.00 |    -       -   | 0.05 | restart located  1.00
+  restart_wrong                 372 |  0.94 |       0.00   -    0.00 |    -       -   | 0.07 | restart located  0.99 | before-restart mistake P  1.00 R  0.98
+
+REAL-TAKE DISAGREEMENTS (20)
+  5buns-1h-wrong11 RH8 C4 gold=correct pred=wrong_pitch
+  5chigh-1h-extra-g5 RH4 F5 gold=correct pred=wrong_pitch
+  5clow-1h-clean RH13 E3 gold=correct pred=wrong_pitch
+  5frere-1h-extra-start RH1 C4 gold=correct pred=wrong_pitch
+  5ode-2h-extra-a4 RH7 E4 gold=correct pred=wrong_pitch
+  5ode-2h-fast RH10 C4 gold=correct pred=missed
+  5ode-2h-late-rh5 RH5 G4 gold=correct+late pred=missed
+  5rests-1h-extra-rest RH2 E4 gold=correct pred=wrong_pitch
+  5twinkle-2h-extralh RH3 G4 gold=correct pred=wrong_pitch
+  5twinkle-2h-late-lh2 LH2 F3 gold=correct+late pred=missed
+  4ode-1h-extra-d15-quick extras tp/fp/fn=0/0/1
+  5chigh-1h-extra-g5 extras tp/fp/fn=0/0/1
+  5chigh-1h-miss6-extra13 extras tp/fp/fn=1/1/0
+  5frere-1h-extra-start extras tp/fp/fn=0/0/1
+  5ode-2h-extra-a4 extras tp/fp/fn=0/0/1
+  5ode-2h-late-held9 extras tp/fp/fn=0/1/0
+  5ode-2h-late-rh5 extras tp/fp/fn=0/1/0
+  5rests-1h-extra-rest extras tp/fp/fn=0/0/1
+  5twinkle-2h-extralh extras tp/fp/fn=0/0/1
+  5twinkle-2h-late-lh2 extras tp/fp/fn=0/1/0
+```
+
+## 2026-11-19 — fixes 1 and 2 from round 3: phantom keys and ringing keys (no longer blind on round 3)
+
+Cause: a key a fourth, fifth or octave from a struck key borrows one shared partial and can score as
+struck (E5 lit up B5 at 0.92 vs E5 0.73; every G3 lit up C3). Its own fundamental never sounds
+(18-27 dB below). And a bass key held under a right-hand re-strike on its octave twitched to an
+"onset" and erased the right-hand key as its overtone (two-hand Twinkle RH9 F4, 6 takes).
+
+Rules (`fundamental`, `Event.phantom`, `Event.rise`, `struck`, `verdicts_for`):
+- phantom = related key (PHANTOM_OFFSETS 5, 7, 12, 19) whose raw fundamental is >= phantom_gap_db (12)
+  below the related struck key's. Never a stray, wrong or extra key; stands for an expected note
+  only when its louder partner is written at that moment too (protects real two-hand bass notes,
+  which are 12+ dB quieter on the phone).
+- a key whose fundamental rose < ring_rise_db (6) was ringing: it cannot pass off a freshly struck
+  expected key as its overtone. A real wrong key an octave below still does (it rises).
+Not a "must rise" rule: 73 of 2,035 real notes (repeated notes) rise < 6 dB.
+
+| goal F1 | before (blind) | after |
+|---|---|---|
+| one hand, round 3 | 0.61 | 0.79 |
+| two hands, round 3 | 0.66 | 0.75 |
+| rounds 1-2, player 3 two-hand | unchanged | unchanged |
+| clean takes, all | 43/51 | 49/51 |
+
+Synthetic suite: no case worse. +/-25% on both settings: no group drops (12 dB x0.75 / x1.25 both
+equal or slightly better). One two-hand extra "found" before (5twinkle-2h-extralh) was a phantom F2
+counted near the real C3; that hit is gone, the real C3 re-strike is still read as a wrong G4.
+Left from round 3: extras named as "wrong, then corrected" (4), hands not together (2), fast
+repeated C4 seen only at its octave (1), low E3 heard as E4 (1), ode-2h RH10 C4 at fast tempo (1).

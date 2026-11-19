@@ -25,6 +25,7 @@ import stft_features
 from score_models import midi_to_note_name
 
 OVERTONE_OFFSETS = (12, 19, 24, 28, 31, 36)
+PHANTOM_OFFSETS = (5, 7, 12, 19)      # fourth, fifth, octave, octave + fifth: keys that share a low partial
 
 
 @dataclass
@@ -102,6 +103,14 @@ class V3Config:
     correction_max_beats: float = 1.5    # a wrong key is "corrected" by the note that follows within this many
                                          # beats; a stray key further ahead of the note is an extra instead
     tempo_passes: int = 2
+    # --- keys that share a partial: a key a fourth, fifth or octave from a struck key collects that key's
+    # shared partial in its own score, so it can look struck without sounding (a "phantom": E5 lights up
+    # B5, G3 lights up C3). The raw spectrum at each key's own fundamental tells them apart.
+    phantom_gap_db: float = 12.0      # a related key whose fundamental is this much quieter than the struck
+                                      #   key's is a phantom: never a stray, wrong or extra key, and it stands
+                                      #   for an expected note only when its louder partner is expected too
+    ring_rise_db: float = 6.0         # a key whose fundamental rose less than this was already ringing: it
+                                      #   cannot pass off a freshly struck expected key as its overtone
     # --- search window: the alignment only considers moves a player makes, so its work grows with
     # the length of the piece instead of with its square
     max_skip: int = 16                # a forward jump passes over at most this many notes
@@ -120,6 +129,8 @@ class Event:
     explained_by: dict[int, int] = field(default_factory=dict)   # removed pitch -> pitch that explains it
     raw_only: set = field(default_factory=set)       # pitches seen only as a jump in the spectrum
     full: set = field(default_factory=set)           # pitches whose attack counted at full strength
+    phantom: dict = field(default_factory=dict)      # phantom key -> the louder related key it borrows from
+    rise: dict = field(default_factory=dict)         # pitch -> dB its own fundamental rose at its strike
 
     @property
     def salience(self) -> float:
@@ -204,6 +215,23 @@ def _spectral_jumps(bundle, hz: float, cfg: V3Config):
     rise[peak < cfg.raw_peak_db] = 0.0
     frames = [f for f in _peaks(rise, cfg.raw_rise_db, cfg.same_pitch_gap) if f + cfg.min_frames_after <= T]
     return frames, after, peak
+
+
+def fundamental(bundle, pitch: int, f: int) -> tuple[float, float] | None:
+    """(level just after frame f, rise from just before) in dB at the key's own fundamental, from the
+    raw spectrum. None outside the spectrum or too close to the start."""
+    db = getattr(bundle.audio, "stft_db", None)
+    if db is None:
+        return None
+    n_bins, T = db.shape
+    hz = 440.0 * 2.0 ** ((pitch - 69) / 12.0)
+    k = int(round(hz * (n_bins - 1) * 2 / bundle.audio.sample_rate))
+    if k < 2 or k + 2 >= n_bins or f < 7 or f + 4 > T:
+        return None
+    r = 1 if k * (2.0 ** (1.0 / 12.0) - 1.0) >= 3.0 else 0      # as in _spectral_jumps
+    level = db[k - r:k + r + 1].max(axis=0)
+    after = float(level[f + 1:f + 4].mean())
+    return after, after - float(level[f - 6:f - 2].mean())
 
 
 def raw_strikes(bundle, pitch: int, cfg: V3Config) -> list[int]:
@@ -406,9 +434,21 @@ def detect_events(bundle, cfg: V3Config, scales: dict[int, float] | None = None)
                 confirmed.add(src)
                 if (frames[q], q) in full:
                     full.add((frames[q], src))
-        primary = sorted(((q, strikes[q]) for q in kept), key=lambda x: -x[1])
+        fund = {q: fundamental(bundle, q, frames[q]) for q in strikes}
+        rise = {q: v[1] for q, v in fund.items() if v is not None}
+        phantom: dict[int, int] = {}
+        for q in kept:
+            if fund.get(q) is None:
+                continue
+            partner = next((k for k in sorted(kept, key=lambda k: -(fund[k][0] if fund.get(k) else -1e9))
+                            if k != q and k not in phantom and abs(q - k) in PHANTOM_OFFSETS and fund.get(k)
+                            and fund[k][0] - fund[q][0] >= cfg.phantom_gap_db), None)
+            if partner is not None:
+                phantom[q] = partner
+        # strongest first, phantoms last: the event's own key is the strongest key that really sounded
+        primary = sorted(((q, strikes[q]) for q in kept), key=lambda x: (x[0] in phantom, -x[1]))
         events.append(Event(frames[primary[0][0]], strikes, primary, explained, set(strikes) - confirmed,
-                            {q for q in strikes if (frames[q], q) in full}))
+                            {q for q in strikes if (frames[q], q) in full}, phantom, rise))
     return events
 
 
@@ -446,10 +486,15 @@ def struck(event: Event, pitch: int, expected: tuple[int, ...], cfg: V3Config) -
     s = event.strikes.get(pitch, 0.0)
     if s < cfg.match_min_salience:
         return 0.0
+    if pitch in event.phantom and event.phantom[pitch] not in expected:
+        return 0.0                         # borrowed from a louder key the score does not want here
     src, hops = event.explained_by.get(pitch), 0
     while src is not None and src in event.explained_by and hops < 8:
         src, hops = event.explained_by[src], hops + 1
     if src is None or src in expected:
+        return s
+    # the explaining key was only ringing (held from before) while this one was freshly struck
+    if event.rise.get(src, 99.0) < cfg.ring_rise_db <= event.rise.get(pitch, -99.0):
         return s
     return 0.0
 
@@ -730,7 +775,7 @@ class Report:
 def verdicts_for(event: Event, pos: Position, prev_pitches: tuple[int, ...], cfg: V3Config) -> tuple[list[PitchVerdict], list[int]]:
     """Per-pitch verdicts for one matched (event, position), plus leftover struck pitches."""
     out, used = [], set()
-    free = [(q, s) for q, s in event.primary if q not in pos.pitches]
+    free = [(q, s) for q, s in event.primary if q not in pos.pitches and q not in event.phantom]
     for p in pos.pitches:
         s = struck(event, p, pos.pitches, cfg)
         if s > 0.0:
