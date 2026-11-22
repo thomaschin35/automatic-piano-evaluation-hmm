@@ -9,7 +9,9 @@ Local demo server (standard library only). From the repo root:
     GET  /api/piece?name=X      one built-in piece as a score
     POST /api/score?filename=F  body = sheet music file  -> {score, warnings, seconds}
     POST /api/audio?filename=F  body = recording         -> {audio_id}
-    POST /api/grade             body = {audio_id, score} -> grade.to_result(...)
+    POST /api/grade             body = {audio_id, score} -> grade.to_result(...) + grade_id
+    GET  /api/measure?grade_id=G&m=N[&attempt=K]   everything the algorithm saw in bar N, as played in
+                                attempt K or in the final grade (ui/measure_view.py)
 
 Uploads are kept in a temp folder that is deleted when the server stops.
 """
@@ -31,6 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import grade as grader                                              # noqa: E402
+from measure_view import measure_detail                             # noqa: E402
 from score_reader import ScoreReadError, read_score, spec_from_dict, spec_to_dict   # noqa: E402
 from eval.pieces import all_pieces                                  # noqa: E402
 
@@ -39,6 +42,8 @@ MAX_UPLOAD = 200 * 1024 * 1024
 SCORE_TYPES = {".pdf", ".png", ".jpg", ".jpeg", ".musicxml", ".xml", ".mxl"}
 UPLOADS: Path                                   # set in main()
 GRADE_LOCK = threading.Lock()                   # one recognition / grading job at a time
+RUNS: dict[str, tuple] = {}                     # grade_id -> (bundle, analysis, report, spec, result); last few only
+KEEP_RUNS = 4
 
 
 class UserError(Exception):
@@ -92,10 +97,12 @@ class Handler(BaseHTTPRequestHandler):
         if url.path in ("/", "/index.html"):
             self._send(200, PAGE.read_bytes(), "text/html; charset=utf-8")
         elif url.path == "/api/pieces":
-            self._handle(lambda: [{"name": n, "title": s.title, "two_hands": not s.is_mono}
+            self._handle(lambda: [{"name": n, "title": s.title, "two_hands": len(s.playing_hands) == 2}
                                   for n, s in all_pieces().items() if not s.pending])
         elif url.path == "/api/piece":
             self._handle(lambda: self._piece(q.get("name", [""])[0]))
+        elif url.path == "/api/measure":
+            self._handle(lambda: self._measure(q.get("grade_id", [""])[0], q.get("m", [""])[0], q.get("attempt", [""])[0]))
         else:
             self._json({"error": "Not found"}, 404)
 
@@ -130,7 +137,7 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             path.unlink(missing_ok=True)
         d = spec_to_dict(spec)
-        if d["title"] == "Uploaded score" and filename:
+        if (d["title"] == "Uploaded score" or len(d["title"].strip()) < 3) and filename:   # homr may read junk
             d["title"] = Path(filename).stem
         return {"score": d, "warnings": warnings, "seconds": round(time.time() - t0, 1)}
 
@@ -154,9 +161,28 @@ class Handler(BaseHTTPRequestHandler):
         spec = spec_from_dict(req.get("score") or {})
         t0 = time.time()
         with GRADE_LOCK:
-            result = grader.grade(found[0], spec)
+            bundle, an, rep = grader.run(found[0], spec)
+        result = grader.to_result(spec, bundle, an, rep)
         result["seconds"] = round(time.time() - t0, 1)
+        grade_id = uuid.uuid4().hex
+        RUNS[grade_id] = (bundle, an, rep, spec, result)
+        while len(RUNS) > KEEP_RUNS:
+            RUNS.pop(next(iter(RUNS)))
+        result["grade_id"] = grade_id
         return result
+
+    def _measure(self, grade_id: str, m: str, attempt: str = "") -> dict:
+        if grade_id not in RUNS:
+            raise UserError("That grading run is no longer on the server; grade again")
+        try:
+            measure = int(m)
+        except ValueError as e:
+            raise UserError("Bad bar number") from e
+        bundle, an, rep, spec, result = RUNS[grade_id]
+        try:
+            return measure_detail(bundle, an, rep, spec, result, measure, int(attempt) if attempt.isdigit() else None)
+        except ValueError as e:
+            raise UserError(str(e)) from e
 
 
 def main() -> None:

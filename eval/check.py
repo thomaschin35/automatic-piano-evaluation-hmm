@@ -109,7 +109,7 @@ def build(adapter, kinds=synth.KINDS, with_synth: bool = True, overrides: dict |
         exact: Counter = Counter()
         located: Counter = Counter()
         for t, spec, bundle in clean_mono:
-            if any(p == 0 for ev in spec.hands.values() for p, _ in ev):
+            if any(not ps for ev in spec.hands.values() for ps, _ in ev):
                 continue                                   # the generators do not handle written rests
             for case in synth.generate(t.id, bundle, spec, kinds):
                 pred = _predict(adapter, case.bundle, case.spec, overrides)

@@ -92,13 +92,11 @@ def to_result(spec: PieceSpec, bundle, an, rep) -> dict:
         n = by_place[(round(pos.beat, 4), pos.pitches[0])]
         return {"id": n.id, "pitch": n.name, "measure": n.measure, "beat": round(n.beat_in_measure, 3)}
 
-    notes = []
-    for pos in an.positions:
-        for v in rep.verdicts[pos.index]:
-            n = by_place[(round(pos.beat, 4), v.pitch)]
-            late = "late" in v.flags
-            notes.append({
-                "id": n.id, "hand": n.hand, "pitch": n.name,
+    def row(pos, v) -> dict:
+        n = by_place[(round(pos.beat, 4), v.pitch)]
+        late = "late" in v.flags
+        return {
+                "id": n.id, "hand": n.hand, "pitch": n.name, "midi": n.pitch,
                 "measure": n.measure, "beat": round(n.beat_in_measure, 3),
                 "start_beat": n.start_beat, "beats": round(n.end_beat - n.start_beat, 4),
                 "label": v.label,                                    # correct | wrong_pitch | missed
@@ -106,11 +104,29 @@ def to_result(spec: PieceSpec, bundle, an, rep) -> dict:
                 "corrected": bool(v.corrected),
                 "time_s": at(v.frame),
                 "late": late, "late_beats": round(v.late_beats, 2) if late else 0.0,
-                "late_reason": v.late_reason if late else "",       # held | paused
+                "late_reason": v.late_reason if late else "",       # held | paused | hands not together
+                "held_long": "held_long" in v.flags,                 # key still down under the next note
                 "times_played": len(rep.visits.get(pos.index, [])),
-            })
+            }
 
-    extras = [{"pitch": midi_to_note_name(p), "time_s": at(f), "after": place(a)} for a, p, f in rep.extras]
+    notes = [row(pos, v) for pos in an.positions for v in rep.verdicts[pos.index]]
+
+    attempts, judged_by = _attempts(an, rep, row, place, at)
+    for x in notes:
+        x["attempt"] = judged_by.get(x["id"], len(attempts) or 1)
+
+    def attempt_at(frame) -> int:
+        """The attempt being played at this frame: the last one that started before it."""
+        k = 1
+        for a in attempts:
+            if a["first_frame"] <= frame:
+                k = a["n"]
+        return k
+
+    extras = [{"pitch": midi_to_note_name(p), "time_s": at(f), "after": place(a), "attempt": attempt_at(f)}
+              for a, p, f in rep.extras]
+    for a in attempts:
+        a["summary"]["extra"] = sum(1 for x in extras if x["attempt"] == a["n"])
 
     back_frames = [an.events[m.event].frame for m in an.matches if m.kind == "back"]
     restarts = []
@@ -135,7 +151,8 @@ def to_result(spec: PieceSpec, bundle, an, rep) -> dict:
     return {
         "piece": {"title": spec.title, "time_signature": list(spec.time_signature),
                   "beats_per_measure": spec.beats_per_measure, "pickup_beats": spec.pickup_beats,
-                  "two_hands": not spec.is_mono},
+                  "two_hands": len(spec.playing_hands) == 2, "hands": spec.playing_hands,
+                  "chords": spec.has_chords},
         "summary": {
             "notes": len(notes), "clean": clean,
             "score_pct": round(100.0 * clean / len(notes), 1) if notes else 0.0,
@@ -143,13 +160,65 @@ def to_result(spec: PieceSpec, bundle, an, rep) -> dict:
             "wrong_pitch": count(lambda n: n["label"] == "wrong_pitch"),
             "missed": count(lambda n: n["label"] == "missed"),
             "late": count(lambda n: n["late"]),
+            "held_long": count(lambda n: n["held_long"]),
             "extra": len(extras), "restarts": len(restarts),
             "tempo_bpm": round(60.0 / spb, 1) if spb > 0 else None,
             "duration_s": round(len(bundle.audio.waveform) / bundle.audio.sample_rate + offset, 2),
         },
-        "notes": notes, "extras": extras, "restarts": restarts,
+        "notes": notes, "extras": extras, "restarts": restarts, "attempts": attempts,
         "report_text": buf.getvalue(),
     }
+
+
+def _attempts(an, rep, row, place, at) -> tuple[list[dict], dict[str, int]]:
+    """Every attempt graded on its own. The take starts in attempt 1 and each restart starts the next.
+    An attempt covers the notes from where it started to where it got to; a note it jumped over is
+    missed in it, and the notes it never reached are not part of it. Returns the attempts and, per
+    note id, the attempt that gives its final verdict (the last one that reached it)."""
+    out: list[dict] = []
+    last = None
+    for m in sorted(an.matches, key=lambda m: m.event):
+        k = rep.attempt_of.get(m.event, 1)
+        if not out or out[-1]["n"] != k:
+            out.append({"n": k, "visits": {}, "skipped": [], "frames": []})
+            last = None if k == 1 else m.position
+            if k == 1:
+                out[-1]["skipped"] += list(range(0, m.position))      # the take began past these notes
+        cur = out[-1]
+        if last is not None and m.position > last + 1:
+            cur["skipped"] += list(range(last + 1, m.position))
+        cur["visits"][m.position] = rep.by_event[m.event]
+        cur["frames"].append(an.events[m.event].frame)
+        last = m.position
+    judged_by: dict[str, int] = {}
+    result = []
+    for i, a in enumerate(out):
+        reached = sorted(set(a["visits"]) | set(a["skipped"]))
+        notes = []
+        for q in reached:
+            pos = an.positions[q]
+            vs = a["visits"].get(q) or [v3.PitchVerdict(p, "missed") for p in pos.pitches]
+            for v in vs:
+                r = row(pos, v)
+                r["times_played"] = 1 if q in a["visits"] else 0
+                notes.append(r)
+                judged_by[r["id"]] = a["n"]
+        clean = sum(1 for x in notes if x["label"] == "correct" and not x["late"])
+        final = i == len(out) - 1
+        back = rep.restarts[i] if not final and i < len(rep.restarts) else None
+        result.append({
+            "n": a["n"], "final": final,
+            "first_frame": min(a["frames"]), "start_s": at(min(a["frames"])), "end_s": at(max(a["frames"])),
+            "from": place(reached[0]) if reached else None, "to": place(reached[-1]) if reached else None,
+            "went_back_to": place(back[1]) if back else None,
+            "notes": notes,
+            "summary": {"notes": len(notes), "clean": clean,
+                        "score_pct": round(100.0 * clean / len(notes), 1) if notes else 0.0,
+                        "wrong_pitch": sum(1 for x in notes if x["label"] == "wrong_pitch"),
+                        "missed": sum(1 for x in notes if x["label"] == "missed"),
+                        "late": sum(1 for x in notes if x["late"])},
+        })
+    return result, judged_by
 
 
 def main() -> None:
@@ -175,7 +244,7 @@ def main() -> None:
     s = result["summary"]
     print(result["report_text"], end="")
     print(f"{spec.title}: {s['clean']}/{s['notes']} notes right and on time ({s['score_pct']}%)  |  "
-          f"wrong {s['wrong_pitch']}, missed {s['missed']}, late {s['late']}, extra {s['extra']}, "
+          f"wrong {s['wrong_pitch']}, missed {s['missed']}, late {s['late']}, held too long {s['held_long']}, extra {s['extra']}, "
           f"went back {s['restarts']}x  |  about {s['tempo_bpm']} bpm")
 
 

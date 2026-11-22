@@ -44,9 +44,9 @@ class Case:
 
 
 def mono_hand(spec: PieceSpec) -> str:
-    hands = [h for h, ev in spec.hands.items() if any(p > 0 for p, _ in ev)]
-    if len(hands) != 1 or any(p == 0 for p, _ in spec.hands[hands[0]]):
-        raise ValueError(f"{spec.name}: synthetic cases need one hand and no rests")
+    hands = spec.playing_hands
+    if len(hands) != 1 or any(len(ps) != 1 for ps, _ in spec.hands[hands[0]]):
+        raise ValueError(f"{spec.name}: synthetic cases need one hand, no rests and no chords")
     return hands[0]
 
 
@@ -74,7 +74,9 @@ def reference_onsets(bundle, spec: PieceSpec, min_gap: int = 4) -> np.ndarray:
 
 
 def _respec(spec: PieceSpec, hand: str, events) -> PieceSpec:
-    return dataclasses.replace(spec, name=spec.name, hands={hand: list(events)})
+    """events: (midi pitch or a pitch tuple, beats) -> the piece format, (pitches, beats)."""
+    as_chord = lambda p: tuple(p) if isinstance(p, tuple) else ((p,) if p > 0 else ())
+    return dataclasses.replace(spec, name=spec.name, hands={hand: [(as_chord(p), d) for p, d in events]})
 
 
 def _case(kind, take_id, bundle, spec, errors, **meta) -> Case:
@@ -90,7 +92,7 @@ def generate(take_id: str, bundle, spec: PieceSpec, kinds=KINDS):
     """Yield Cases for one clean monophonic take."""
     hand = mono_hand(spec)
     ev = spec.hands[hand]
-    P = [p for p, _ in ev]
+    P = [ps[0] for ps, _ in ev]
     D = [d for _, d in ev]
     n = len(P)
     nid = lambda i: f"{hand}{i + 1}"

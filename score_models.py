@@ -21,6 +21,9 @@ class ScoreModel:
     harmony: ScoreTrack
     total_beats: float
     bpm_ref: float = 120.0
+    # further voices for chords within a hand (each one note at a time, rests where a chord is
+    # smaller). Empty for every piece without chords, which then slices exactly as before.
+    extra: tuple[ScoreTrack, ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -220,6 +223,7 @@ class ScoreSegment:
     melody_pitch: int
     harmony_pitch: int
     onset_pitches: tuple[int, ...]
+    extra_pitches: tuple[int, ...] = ()     # sounding notes of the extra (chord) voices
 
     @property
     def duration_beats(self) -> float:
@@ -232,6 +236,7 @@ class ScoreSegment:
             pitches.append(self.melody_pitch)
         if self.harmony_pitch > 0:
             pitches.append(self.harmony_pitch)
+        pitches.extend(p for p in self.extra_pitches if p > 0)
         return tuple(sorted(set(pitches)))
 
 
@@ -256,10 +261,17 @@ def slice_score_to_segments(score: ScoreModel) -> list[ScoreSegment]:
         harm_intervals.append((harm_beats, harm_beats + d, p))
         harm_beats += d
 
+    extra_intervals = []
+    for track in score.extra:
+        beat, iv = 0.0, []
+        for p, d in zip(track.pitches, track.durations_beats):
+            iv.append((beat, beat + d, p))
+            beat += d
+        extra_intervals.append(iv)
+    all_intervals = mel_intervals + harm_intervals + [x for iv in extra_intervals for x in iv]
+
     boundaries = {0.0, score.total_beats}
-    for s, e, _ in mel_intervals:
-        boundaries.add(s); boundaries.add(e)
-    for s, e, _ in harm_intervals:
+    for s, e, _ in all_intervals:
         boundaries.add(s); boundaries.add(e)
     ordered = sorted(boundaries)
 
@@ -275,9 +287,10 @@ def slice_score_to_segments(score: ScoreModel) -> list[ScoreSegment]:
         m_p = active_pitch(mel_intervals, s_beat)
         h_p = active_pitch(harm_intervals, s_beat)
         onsets = tuple(sorted({
-            p for s, _, p in (mel_intervals + harm_intervals)
+            p for s, _, p in all_intervals
             if p > 0 and abs(s - s_beat) < 1e-4
         }))
+        extra = tuple(p for p in (active_pitch(iv, s_beat) for iv in extra_intervals) if p > 0)
         segments.append(ScoreSegment(
             index=i,
             start_beat=s_beat,
@@ -285,6 +298,7 @@ def slice_score_to_segments(score: ScoreModel) -> list[ScoreSegment]:
             melody_pitch=m_p,
             harmony_pitch=h_p,
             onset_pitches=onsets,
+            extra_pitches=extra,
         ))
     return segments
 

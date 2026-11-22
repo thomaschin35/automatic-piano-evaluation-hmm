@@ -3,6 +3,10 @@ pieces.py
 Loads piece specs (eval/pieces/*.toml) into numbered ScoreNotes and converts
 them to the model's ScoreModel. Note ids are per hand and 1-based (RH4 = the
 4th right-hand note); rests are not numbered.
+
+A hand's event is a single note ("E4"), a chord within that hand ("C4+E4+G4", all
+tones starting and ending together) or "rest". Each chord tone is a note of its own,
+numbered low to high: a C-E-G chord after RH3 is RH4 (C), RH5 (E), RH6 (G).
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -20,6 +24,20 @@ HANDS = ("RH", "LH")
 
 _PITCH_CLASSES = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 _PITCH_RE = re.compile(r"^([A-Ga-g])([#b]?)(-?\d)$")
+
+
+def parse_chord(name: str) -> tuple[int, ...]:
+    """'C4' -> (60,), 'G4+C4+E4' -> (60, 64, 67), 'rest' -> ()."""
+    parts = [p.strip() for p in name.split("+")]
+    if len(parts) == 1:
+        p = parse_pitch(parts[0])
+        return (p,) if p > 0 else ()
+    pitches = [parse_pitch(p) for p in parts]
+    if 0 in pitches:
+        raise ValueError(f"'{name}': a chord cannot contain a rest")
+    if len(set(pitches)) != len(pitches):
+        raise ValueError(f"'{name}': the same key twice in one chord")
+    return tuple(sorted(pitches))
 
 
 def parse_pitch(name: str) -> int:
@@ -58,7 +76,7 @@ class PieceSpec:
     time_signature: tuple[int, int]
     bpm: float
     pickup_beats: float
-    hands: dict[str, list[tuple[int, float]]]   # hand -> [(midi or 0 for rest, beats)]
+    hands: dict[str, list[tuple[tuple[int, ...], float]]]   # hand -> [(midi pitches low to high, () = rest, beats)]
     pending: bool = False
 
     @property
@@ -67,9 +85,18 @@ class PieceSpec:
         return num * 4.0 / den
 
     @property
+    def playing_hands(self) -> list[str]:
+        return [h for h in HANDS if any(ps for ps, _ in self.hands.get(h, []))]
+
+    @property
+    def has_chords(self) -> bool:
+        """Some hand plays two or more keys at once."""
+        return any(len(ps) > 1 for evs in self.hands.values() for ps, _ in evs)
+
+    @property
     def is_mono(self) -> bool:
         """One hand plays: a single line, one note at a time."""
-        return sum(any(p > 0 for p, _ in evs) for evs in self.hands.values()) == 1
+        return len(self.playing_hands) == 1 and not self.has_chords
 
     @property
     def group(self) -> str:
@@ -84,8 +111,8 @@ class PieceSpec:
         out = []
         for hand in HANDS:
             beat, idx = 0.0, 0
-            for pitch, dur in self.hands.get(hand, []):
-                if pitch > 0:
+            for pitches, dur in self.hands.get(hand, []):
+                for pitch in pitches:
                     idx += 1
                     rel = beat - self.pickup_beats
                     measure = int(rel // self.beats_per_measure) + 1
@@ -96,7 +123,7 @@ class PieceSpec:
                         beat_in_measure=rel - (measure - 1) * self.beats_per_measure + 1,
                     ))
                 beat += dur
-        out.sort(key=lambda n: (n.start_beat, HANDS.index(n.hand)))
+        out.sort(key=lambda n: (n.start_beat, HANDS.index(n.hand), n.index))
         return out
 
     def note_by_id(self) -> dict[str, ScoreNote]:
@@ -106,16 +133,23 @@ class PieceSpec:
         if self.pending:
             raise ValueError(f"Piece '{self.name}' is pending transcription")
 
-        def track(hand: str) -> ScoreTrack:
-            evs = self.hands.get(hand) or [(0, self.total_beats)]
-            return ScoreTrack(pitches=[p for p, _ in evs], durations_beats=[d for _, d in evs])
+        def voices(hand: str) -> list[ScoreTrack]:
+            """One track per chord voice. Voice 0 is the top note in the right hand and the bottom
+            note in the left (the melody and the bass); a smaller chord rests in the voices it lacks."""
+            evs = self.hands.get(hand) or [((), self.total_beats)]
+            n = max(1, max(len(ps) for ps, _ in evs))
+            order = (lambda ps: sorted(ps, reverse=True)) if hand == "RH" else sorted
+            return [ScoreTrack(pitches=[(order(ps)[v] if v < len(ps) else 0) for ps, _ in evs],
+                               durations_beats=[d for _, d in evs]) for v in range(n)]
 
+        rh, lh = voices("RH"), voices("LH")
         return ScoreModel(
             name=self.name,
-            melody=track("RH"),
-            harmony=track("LH"),
+            melody=rh[0],
+            harmony=lh[0],
             total_beats=self.total_beats,
             bpm_ref=self.bpm,
+            extra=tuple(rh[1:] + lh[1:]),
         )
 
 
@@ -129,7 +163,7 @@ def load_piece(name_or_path: str | Path) -> PieceSpec:
     for hand, events in raw.get("hands", {}).items():
         if hand not in HANDS:
             raise ValueError(f"{path.name}: unknown hand '{hand}' (use RH/LH)")
-        hands[hand] = [(parse_pitch(p), float(d)) for p, d in events]
+        hands[hand] = [(parse_chord(p), float(d)) for p, d in events]
     spec = PieceSpec(
         name=raw["name"],
         title=raw.get("title", raw["name"]),

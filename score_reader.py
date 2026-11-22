@@ -7,9 +7,9 @@ Turns sheet music into the PieceSpec the grader follows.
 homr lives in its own virtual env (.venv-omr, see ui/README.md) and is called as a subprocess, so
 its dependencies never touch the algorithm's env. MusicXML / .mxl files skip the recognition step.
 
-The algorithm follows one note at a time per hand. Chords inside a hand are reduced to one note
-(top note in the right hand, bottom note in the left) in `_line`, which is the single place to
-change when the algorithm learns chords. Every reduction is reported in the warnings.
+Each staff becomes one hand. Notes that start together on a staff are one chord of that hand
+(all its tones last as long as the longest one); a note still sounding when the next one starts is
+cut there, so each hand is a sequence of single notes, chords and rests.
 """
 from __future__ import annotations
 from collections import defaultdict
@@ -23,7 +23,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 from score_models import midi_to_note_name
-from eval.pieces import PieceSpec, parse_pitch
+from eval.pieces import PieceSpec, parse_chord
 
 ROOT = Path(__file__).resolve().parent
 OMR_ENV = ROOT / ".venv-omr"
@@ -42,7 +42,8 @@ def spec_to_dict(spec: PieceSpec) -> dict:
     return {
         "name": spec.name, "title": spec.title, "time_signature": list(spec.time_signature),
         "bpm": spec.bpm, "pickup_beats": spec.pickup_beats,
-        "hands": {h: [[midi_to_note_name(p), d] for p, d in evs] for h, evs in spec.hands.items()},
+        "hands": {h: [["+".join(midi_to_note_name(p) for p in ps) if ps else "rest", d] for ps, d in evs]
+                  for h, evs in spec.hands.items()},
     }
 
 
@@ -53,12 +54,12 @@ def spec_from_dict(d: dict) -> PieceSpec:
         if hand not in ("RH", "LH"):
             raise ScoreReadError(f"Unknown hand '{hand}' (use RH / LH)")
         try:
-            evs = [(parse_pitch(str(p)), float(dur)) for p, dur in events]
+            evs = [(parse_chord(str(p)), float(dur)) for p, dur in events]
         except (ValueError, TypeError) as e:
             raise ScoreReadError(f"{hand}: {e}") from e
         if any(dur <= 0 for _, dur in evs):
             raise ScoreReadError(f"{hand}: every note needs a length above 0 beats")
-        if any(p > 0 for p, _ in evs):
+        if any(ps for ps, _ in evs):
             hands[hand] = evs
     if not hands:
         raise ScoreReadError("The score has no notes")
@@ -66,7 +67,7 @@ def spec_from_dict(d: dict) -> PieceSpec:
     for evs in hands.values():
         short = total - sum(dur for _, dur in evs)
         if short > 1e-9:
-            evs.append((0, short))
+            evs.append(((), short))
     num, den = d.get("time_signature") or [4, 4]
     return PieceSpec(
         name=str(d.get("name") or "uploaded"), title=str(d.get("title") or "Uploaded score"),
@@ -179,11 +180,11 @@ def _q(x: Fraction) -> float:
     return round(float(x) * GRID) / GRID
 
 
-def _line(notes: list[_Note], keep_top: bool, total: Fraction) -> tuple[list[tuple[int, float]], int]:
-    """One staff -> one note at a time, as [(midi or 0 for rest, beats)]. Returns the chord count too.
+def _line(notes: list[_Note], total: Fraction) -> list[tuple[tuple[int, ...], float]]:
+    """One staff -> [(midi pitches low to high, () for a rest, beats)].
 
-    Tied notes are joined. Where several notes start together, one is kept (top or bottom).
-    A note still sounding when the next one starts is cut there."""
+    Tied notes are joined. Notes that start together are one chord, as long as its longest tone.
+    A chord still sounding when the next one starts is cut there."""
     merged: list[_Note] = []
     for n in sorted(notes, key=lambda n: (n.onset, n.midi)):
         prev = next((m for m in reversed(merged) if m.midi == n.midi and m.onset + m.dur == n.onset), None)
@@ -194,30 +195,30 @@ def _line(notes: list[_Note], keep_top: bool, total: Fraction) -> tuple[list[tup
     by_onset: dict[Fraction, list[_Note]] = defaultdict(list)
     for n in merged:
         by_onset[n.onset].append(n)
-    chords = sum(len({n.midi for n in ns}) > 1 for ns in by_onset.values())
-    seq = [(max if keep_top else min)(ns, key=lambda n: n.midi) for _, ns in sorted(by_onset.items())]
-    events: list[tuple[int, float]] = []
+    seq = [(onset, tuple(sorted({n.midi for n in ns})), max(n.dur for n in ns))
+           for onset, ns in sorted(by_onset.items())]
+    events: list[tuple[tuple[int, ...], float]] = []
     t = 0.0
-    for i, n in enumerate(seq):
-        on = _q(n.onset)
-        end = min(_q(n.onset + n.dur), _q(seq[i + 1].onset) if i + 1 < len(seq) else _q(total))
+    for i, (onset, pitches, dur) in enumerate(seq):
+        on = _q(onset)
+        end = min(_q(onset + dur), _q(seq[i + 1][0]) if i + 1 < len(seq) else _q(total))
         if end <= on or on < t:
             continue
         if on > t:
-            events.append((0, on - t))
-        events.append((n.midi, end - on))
+            events.append(((), on - t))
+        events.append((pitches, end - on))
         t = end
     if _q(total) > t:
-        events.append((0, _q(total) - t))
-    return events, chords
+        events.append(((), _q(total) - t))
+    return events
 
 
 def piece_from_musicxml(paths: Path | list[Path], title: str = "") -> tuple[PieceSpec, list[str]]:
     """MusicXML file(s), one per page in reading order -> (PieceSpec, warnings)."""
     paths = [paths] if isinstance(paths, (str, Path)) else list(paths)
     pages = [_parse_page(Path(p), allow_pickup=(i == 0)) for i, p in enumerate(paths)]
-    hands: dict[str, list[tuple[int, float]]] = {"RH": [], "LH": []}
-    warnings, chords, ignored, irregular = [], 0, 0, 0
+    hands: dict[str, list[tuple[tuple[int, ...], float]]] = {"RH": [], "LH": []}
+    warnings, ignored, irregular = [], 0, 0
     for page in pages:
         keys = sorted(page.staves)
         if len(keys) == 1:
@@ -227,18 +228,14 @@ def piece_from_musicxml(paths: Path | list[Path], title: str = "") -> tuple[Piec
             ignored += max(0, len(keys) - 2)
         for hand in hands:
             if hand in assign:
-                evs, c = _line(page.staves[assign[hand]], hand == "RH", page.total)
-                chords += c
+                evs = _line(page.staves[assign[hand]], page.total)
             else:
-                evs = [(0, _q(page.total))] if page.total else []
+                evs = [((), _q(page.total))] if page.total else []
             hands[hand] += evs
         irregular += page.irregular
-    hands = {h: evs for h, evs in hands.items() if any(p > 0 for p, _ in evs)}
+    hands = {h: evs for h, evs in hands.items() if any(ps for ps, _ in evs)}
     if not hands:
         raise ScoreReadError("No notes were found in the score")
-    if chords:
-        warnings.append(f"{chords} chord(s) were reduced to one note (top note in the right hand, bottom note in "
-                        "the left): the algorithm follows one note at a time per hand for now.")
     if ignored:
         warnings.append(f"{ignored} extra staff/staves were ignored (only the first two are used).")
     if irregular:
